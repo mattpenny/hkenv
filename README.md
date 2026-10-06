@@ -92,6 +92,12 @@ with no horizontal overflow and a monotonic header height.
   chip pans the map to that point and opens its popup, outlining the active
   item. This respects the layer checkboxes: with the beach layer hidden,
   clicking a beach still pans there but does not force the layer back on.
+  The page also **scrolls the map to the top of the viewport** unless the whole
+  map is already visible, so focus follows the map rather than the card the user
+  tapped. On a phone the cards sit below the map, so this is what lets the zoom
+  animation paint - Leaflet's `flyTo` runs on `requestAnimationFrame`, which
+  browsers suspend for off-screen content, otherwise leaving a half-drawn map.
+  After the animation the map re-measures and forces a fresh tile pass.
 - **Legend** - collapsed by default and expands on tap, so it does not cover
   the map on a phone.
 - **Data sources** - the attribution/disclaimer popover in the header. Closes on
