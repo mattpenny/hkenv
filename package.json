@@ -6,6 +6,7 @@
   "description": "Interactive map of Hong Kong AQHI and Beach Water Quality using open data from data.gov.hk",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "node tools/dev-mock.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "gh-pages -d dist"

@@ -21,6 +21,7 @@ export default function MapView({
   showStations,
   showBeaches,
   highlight, // { type: 'station'|'beach', id, lat, lng }
+  stationTypes, // optional { stationName: 'General' | 'Roadside' }
 }) {
   const { t, tRisk, tStation, tDistrict, tBeach, formatDateTime, lang } = useI18n();
   const containerRef = useRef(null);
@@ -143,22 +144,32 @@ export default function MapView({
 
     stations.forEach((s) => {
       if (s.latitude == null || s.longitude == null) return;
+      // Roadside stations are marked with a dashed amber ring so they are
+      // distinguishable from general stations at a glance, without changing the
+      // fill (which encodes the AQHI value and must stay legible).
+      const type = stationTypes?.[s.station] ?? null;
+      const isRoad = type === 'Roadside';
       const marker = L.circleMarker([s.latitude, s.longitude], {
         radius: 10,
-        color: '#ffffff',
-        weight: 2,
+        color: isRoad ? '#b35c0d' : '#ffffff',
+        weight: isRoad ? 3 : 2,
+        dashArray: isRoad ? '4 3' : null,
         fillColor: aqhiColor(s.aqhi),
         fillOpacity: 0.9,
       });
+      const typeLine = type
+        ? `<br/>${t('station.typeLabel')}: <b>${t(isRoad ? 'station.roadside' : 'station.general')}</b>`
+        : '';
       marker.bindPopup(
         `<strong>${tStation(s.station)}</strong><br/>${t('popup.aqhi')}: <b>${s.aqhi ?? t('aqhi.na')}</b><br/>` +
-          `${t('popup.healthRisk')}: <b>${tRisk(s.category)}</b><br/>` +
-          `<small>${formatDateTime(s.timestamp ?? s.fetchedAt)}</small>`
+          `${t('popup.healthRisk')}: <b>${tRisk(s.category)}</b>` +
+          typeLine +
+          `<br/><small>${formatDateTime(s.timestamp ?? s.fetchedAt)}</small>`
       );
       markerIndexRef.current.station.set(s.station, marker);
       layer.addLayer(marker);
     });
-  }, [stations, showStations, lang, t, tRisk, tStation, formatDateTime]);
+  }, [stations, showStations, lang, t, tRisk, tStation, formatDateTime, stationTypes]);
 
   // ---- Render beach markers ----
   useEffect(() => {

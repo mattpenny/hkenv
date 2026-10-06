@@ -539,3 +539,538 @@ select {
 
 /* The compact date is only used on phones. */
 .header-date-short { display: none; }
+/* ==========================================================================
+   Station type (General / Roadside) badges + filter
+   ========================================================================== */
+
+/* The badge is a small pill. General uses a muted slate, Roadside a warm
+   accent, so the distinction reads at a glance without relying on colour alone
+   (the label text carries the meaning). */
+.type-badge {
+  display: inline-block;
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.type-badge.is-general {
+  background: #e8eef2;
+  color: #4a6675;
+  border-color: #d3e0e8;
+}
+.type-badge.is-roadside {
+  background: #fdeee2;
+  color: #a2520f;
+  border-color: #f6d9be;
+}
+
+/* Roadside rows get a left accent so the three roadside sites stand out in a
+   long station list even before you read the badge. */
+.station-row.is-roadside {
+  box-shadow: inset 3px 0 0 #e67e22;
+}
+
+.type-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 4px;
+}
+.type-filter-label { font-size: 0.75rem; }
+.type-filter button {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 4px 9px;
+  cursor: pointer;
+  border-radius: 999px;
+  border: 1px solid #cfe3ee;
+  background: #f4fafd;
+  color: var(--primary-dark);
+}
+.type-filter button.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+.aqhi-hero-badge { margin: 2px 0; }
+
+/* ==========================================================================
+   Pollutant detail (chart + table)
+   ========================================================================== */
+
+/* Full-width row beneath the three cards: five small multiples need the room. */
+.pollutant-panel { margin-top: 0; }
+
+.poll-toggle {
+  display: inline-flex;
+  border: 1px solid #cfe3ee;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.poll-toggle button {
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 4px 11px;
+  border: 0;
+  background: #f4fafd;
+  color: var(--primary-dark);
+  cursor: pointer;
+}
+.poll-toggle button.is-active {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.poll-station-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0 6px;
+}
+.poll-station-picker label { font-size: 0.8rem; color: var(--muted); }
+.poll-station-picker select {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid #cfe3ee;
+  background: #fff;
+  color: var(--ink);
+  max-width: 100%;
+}
+
+.poll-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  font-size: 0.78rem;
+  margin: 0 0 10px;
+}
+.poll-caption { font-size: 0.78rem; margin: 0 0 10px; }
+
+/* Small multiples: two or three across on desktop, one on a phone. */
+.poll-sparks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 700px) {
+  .poll-sparks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1180px) {
+  .poll-sparks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.poll-spark {
+  margin: 0;
+  padding: 8px 8px 4px;
+  border: 1px solid #e3f1f8;
+  border-radius: 10px;
+  background: #fbfdff;
+}
+.poll-spark figcaption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+.poll-spark-label { color: var(--ink); }
+.poll-spark-latest {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.poll-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+.poll-spark-svg { display: block; width: 100%; height: 96px; }
+.poll-axis { stroke: #cfe3ee; stroke-width: 1; }
+.poll-grid { stroke: #e8f2f8; stroke-width: 1; stroke-dasharray: 3 3; }
+.poll-axis-text {
+  fill: var(--muted);
+  font-size: 9px;
+  font-family: inherit;
+}
+
+/* Table view */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.poll-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+.poll-table th,
+.poll-table td {
+  padding: 7px 8px;
+  text-align: right;
+  border-bottom: 1px solid #eaf4fa;
+  white-space: nowrap;
+}
+.poll-table thead th {
+  color: var(--primary-dark);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: right;
+  border-bottom: 2px solid #e3f1f8;
+  position: sticky;
+  top: 0;
+  background: var(--card);
+}
+.poll-table thead th:first-child,
+.poll-table tbody th { text-align: left; }
+.poll-table tbody th {
+  font-weight: 500;
+  color: var(--ink);
+}
+/* A missing reading is an em dash, never a 0 — styled to look absent. */
+.poll-na { color: #b7cbd6; cursor: help; }
+
+/* Stacked share bar */
+.poll-composition { margin-top: 14px; }
+.poll-composition h4 {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  color: var(--primary-dark);
+}
+.poll-stack {
+  display: flex;
+  height: 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 8px 0 10px;
+  background: #eef6fb;
+}
+.poll-stack span { display: block; height: 100%; }
+.poll-share-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 0.8rem;
+}
+.poll-share-list li { display: flex; align-items: center; gap: 5px; }
+.poll-share-list .grow { flex: 0 0 auto; }
+.poll-share-list b { font-variant-numeric: tabular-nums; }
+.poll-ar { font-size: 0.8rem; margin: 10px 0 4px; }
+.poll-incomplete { font-size: 0.8rem; margin-top: 12px; }
+
+/* Visually hidden, but still read by screen readers (table captions). */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .poll-toggle button,
+  .type-filter button { transition: background 0.15s ease, color 0.15s ease; }
+}
+
+/* ==========================================================================
+   Pollutant detail — header icon, dialog, single-chart accordion
+   ========================================================================== */
+
+/* Header row of the Air Quality card: title on the left, region tabs and the
+   pollutant icon right-aligned on the SAME line.
+   
+   This is a single flex row with `flex-wrap: nowrap` rather than the old
+   stacked block. The previous version put the tabs on their own line below the
+   title (`flex-wrap: wrap` on a full-width block), so the icon — which must sit
+   in the same row as the title — could not be aligned with it. */
+.card-head {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+}
+.card-head h3 {
+  margin: 0;
+  /* The title must not be squeezed by the controls. `flex: 1 1 auto` with a
+     real min-width keeps it readable and lets the CONTROLS be the thing that
+     wraps (via the media query below), rather than eliding the card's own
+     name — which is what happened when the title was the only shrinkable item. */
+  flex: 0 1 auto;
+  min-width: 6.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-head-extra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Below ~620px the title + region tabs + icon cannot share a line without
+   clipping the region labels, so the controls drop to their own row. The icon
+   stays last (rightmost) either way, which is what the layout calls for. */
+@media (max-width: 620px) {
+  .card-head { flex-wrap: wrap; }
+  .card-head-extra { margin-left: 0; width: 100%; justify-content: space-between; }
+}
+
+/* The pollutant-detail entry point. The breathing pulse is what makes it read
+   as clickable rather than as a static label. */
+.poll-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  border: 1px solid #bfe0f0;
+  background: linear-gradient(135deg, #eaf7fd, #e6f6f1);
+  color: var(--primary-dark);
+  cursor: pointer;
+  white-space: nowrap;
+  /* Two animations: the ring pulses, the icon breathes. Both are slow and
+     low-amplitude on purpose — this sits next to text the user is reading. */
+  animation: poll-breathe 3.2s ease-in-out infinite;
+}
+.poll-open-btn:hover {
+  background: linear-gradient(135deg, #dcf1fb, #d9f2ea);
+  border-color: var(--primary);
+}
+.poll-open-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.poll-open-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+  animation: none;
+}
+.poll-open-icon {
+  display: inline-flex;
+  color: var(--primary);
+  animation: poll-icon-pulse 3.2s ease-in-out infinite;
+}
+.poll-open-btn:disabled .poll-open-icon { animation: none; }
+.poll-open-count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 1.35em;
+  text-align: center;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+/* A gentle expansion/contraction rather than a blink: opacity alone at a fast
+   rate is fatiguing, so the movement is slow.
+   
+   IMPORTANT: only PAINT properties are animated here (box-shadow, opacity).
+   An earlier version also animated `transform: scale()` on the button itself,
+   which (a) kept the element permanently "unstable" for anything measuring its
+   box — Playwright refuses to click such an element, and a real user can
+   mistap a moving target — and (b) forced a repaint of the button every frame
+   forever. Box-shadow conveys the same "breathing" cue without moving anything. */
+@keyframes poll-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(42, 134, 184, 0.30); }
+  50% { box-shadow: 0 0 0 5px rgba(42, 134, 184, 0); }
+}
+@keyframes poll-icon-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+/* Users who ask for reduced motion get a static button — a permanently
+   pulsing element is a real accessibility problem, not just a nicety. */
+@media (prefers-reduced-motion: reduce) {
+  .poll-open-btn,
+  .poll-open-icon { animation: none !important; }
+}
+
+/* Hide the text label on a phone: the icon plus its aria-label is enough, and
+   the header already has to fit the region tabs. */
+@media (max-width: 700px) {
+  .poll-open-label { display: none; }
+}
+
+/* ---- Dialog ------------------------------------------------------------ */
+
+.poll-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(16, 40, 54, 0.52);
+  /* Soft blur so the page behind reads as inactive. */
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 16px;
+  overflow-y: auto;
+  animation: poll-fade 0.18s ease-out;
+}
+@keyframes poll-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.poll-modal {
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: 0 18px 48px rgba(16, 40, 54, 0.34);
+  width: min(920px, 100%);
+  /* Grow with content but never exceed the viewport minus the backdrop pad. */
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: poll-rise 0.2s ease-out;
+}
+@keyframes poll-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .poll-modal-backdrop, .poll-modal { animation: none; }
+}
+
+/* Sticky bar so the close button stays reachable while the detail scrolls. */
+.poll-modal-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 16px;
+  background: var(--card);
+  border-bottom: 1px solid #e3f1f8;
+}
+.poll-modal-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.poll-modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid #d4e7f1;
+  background: #f4fafd;
+  color: var(--primary-dark);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.poll-modal-close:hover { background: #e6f2f9; border-color: var(--primary); }
+.poll-modal-close:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.poll-modal-body { overflow-y: auto; padding: 12px; }
+
+/* Inside the dialog the panel is the only content, so drop the card chrome
+   (shadow/padding) that made sense when it sat on the page. */
+.poll-card { box-shadow: none; }
+.poll-modal-body .poll-card { padding: 14px 14px 12px; }
+
+/* Put the toggle and the close button on one line with the title. */
+.poll-card-head { align-items: center; }
+.poll-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 600px) {
+  .poll-modal-backdrop { padding: 3vh 8px; }
+  .poll-modal { max-height: 94vh; }
+  .poll-modal-body { padding: 8px; }
+  .poll-modal-body .poll-card { padding: 12px 10px 10px; }
+}
+
+/* ---- Single-chart accordion ------------------------------------------- */
+
+/* One row of chips; the active one is outlined in its series colour so the
+   chart below is unambiguous. Scrolls horizontally on a phone instead of
+   wrapping into a tall block. `scroll-snap` plus the trailing padding stops the
+   last chip sitting flush against the clip edge, which otherwise reads as a
+   rendering fault rather than as "there is more to scroll". */
+.poll-chips {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 2px 4px 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+}
+.poll-chip { scroll-snap-align: start; }
+.poll-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: 1px solid #dceaf2;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.poll-chip:hover { border-color: #b9dcec; }
+.poll-chip:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+/* The active chip is tinted and outlined in the series colour set inline. */
+.poll-chip.is-active {
+  background: #f4fbff;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.poll-chip b { font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* The single chart gets the full dialog width and a taller plot. */
+.poll-spark.is-detail {
+  padding: 12px 12px 6px;
+  background: #fff;
+}
+.poll-spark.is-detail .poll-spark-svg { height: 230px; }
+.poll-spark.is-detail figcaption { margin-bottom: 8px; }
+.poll-spark.is-detail .poll-spark-label { font-size: 0.95rem; }
+.poll-spark.is-detail .poll-spark-latest { font-size: 0.95rem; }
+
+.poll-basis-line { font-size: 0.78rem; margin: 10px 0 0; }

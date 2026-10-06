@@ -72,6 +72,96 @@ export const STRINGS = {
     'aqhi.focusHint': 'Click to show this station on the map',
     'aqhi.focusHintCard': 'Click the station name to show it on the map',
 
+    // Station type (General / Roadside)
+    'station.general': 'General',
+    'station.roadside': 'Roadside',
+    'station.generalHint':
+      'General station — the pollution level you are exposed to most of the time.',
+    'station.roadsideHint':
+      'Roadside station — measured beside heavy traffic and tall buildings.',
+    'station.filterAll': 'All',
+    'station.typeLabel': 'Station type',
+
+    // Pollutants (Air Quality card, detail section)
+    'poll.title': 'Pollutant Detail',
+    'poll.open': 'Pollutant detail',
+    'poll.openHint': 'Open pollutant detail for the stations',
+    'poll.close': 'Close',
+    'poll.aria.dialog': 'Pollutant detail for all stations',
+    'poll.aria.chartPicker': 'Choose which pollutant to chart',
+
+    /**
+     * Short tab labels for the single-chart accordion. Kept separate from
+     * `poll.legend.*` (which spells the names out for the chart caption) so the
+     * summary row stays on one line on a phone.
+     */
+    'poll.chip.SO2': 'SO2',
+    'poll.chip.NO2': 'NO2',
+    'poll.chip.O3': 'O3',
+    'poll.chip.PM10': 'PM10',
+    'poll.chip.PM2.5': 'PM2.5',
+
+    'poll.range.hours': 'last 24 hours',
+
+    'poll.loading': 'Loading pollutant data…',
+    'poll.unavailable':
+      'Pollutant detail is not available on this deployment (the data feed needs a server-side proxy).',
+    'poll.error': 'Could not load pollutant data: {error}',
+    'poll.none': 'No pollutant data.',
+    'poll.viewChart': 'Chart',
+    'poll.viewTable': 'Table',
+    'poll.aria.viewToggle': 'Switch between chart and table',
+    'poll.chartTitle': '24-hour pollutant concentrations',
+    'poll.chartCaption':
+      'Hourly readings for {station}, in µg/m³. The dot marks the most recent hour; a break in a line means no reading was published for those hours.',
+    'poll.seriesLabel': 'Pollutant series',
+    'poll.legend.NO2': 'Nitrogen dioxide (NO2)',
+    'poll.legend.O3': 'Ozone (O3)',
+    'poll.legend.SO2': 'Sulphur dioxide (SO2)',
+    'poll.legend.PM10': 'PM10',
+    'poll.legend.PM2.5': 'PM2.5',
+    'poll.unit': 'µg/m³',
+    'poll.colPollutant': 'Pollutant',
+    'poll.colLatest': 'Latest ({unit})',
+    'poll.colAvg': '3-hr avg ({unit})',
+    'poll.colShare': 'Share of AQHI',
+    'poll.colMin': '24-hr min',
+    'poll.colMax': '24-hr max',
+    'poll.colAvg24': '24-hr avg',
+    'poll.na': '—',
+    'poll.naHint': 'No reading published for this hour.',
+    'poll.averaging':
+      'Averaging window: {window}. The AQHI combines these pollutants over a 3-hour moving average.',
+    'poll.window1h': '1 hour (latest reading)',
+    'poll.window3h': '3 hours',
+    'poll.window24h': '24 hours',
+    'poll.pmBasis': 'PM counted as {basis} (whichever poses the higher health risk)',
+    'poll.noComposition':
+      'The AQHI breakdown is unavailable for this station/hour — a required pollutant reading is missing.',
+    'poll.composedTitle': 'What makes up the AQHI here',
+    'poll.composedCaption':
+      'Each pollutant’s share of the summed added health risk (%AR), recomputed from the 3-hour moving average using the EPD formula. EPD publishes rounded shares, so these can differ by a percentage point.',
+    'poll.arValue': 'Summed added health risk: {ar}% → AQHI {aqhi}',
+    'poll.computedNotice': 'Recomputed by this app, not an EPD-published figure.',
+    'poll.latestAt': 'Latest reading {time}',
+    'poll.stationPicker': 'Station',
+    'poll.noStation': 'Select a station to see its pollutant detail.',
+    'poll.pmNote':
+      'PM10 and PM2.5 are alternative measures of particulate matter. The AQHI uses whichever gives the higher health risk, so only one is counted.',
+    'poll.source': 'Source: EPD AQHI past-24-hour pollutant concentration feed.',
+
+    // Pollutant long names (also used by the table)
+    'poll.name.NO2': 'Nitrogen dioxide',
+    'poll.name.O3': 'Ozone',
+    'poll.name.SO2': 'Sulphur dioxide',
+    'poll.name.PM10': 'Respirable suspended particulates (PM10)',
+    'poll.name.PM2.5': 'Fine suspended particulates (PM2.5)',
+    'poll.short.NO2': 'NO2',
+    'poll.short.O3': 'O3',
+    'poll.short.SO2': 'SO2',
+    'poll.short.PM10': 'PM10',
+    'poll.short.PM2.5': 'PM2.5',
+
     // Beach card
     'beach.title': 'Beach Water Quality',
     'beach.loading': 'Loading beaches…',
@@ -202,6 +292,89 @@ export const STRINGS = {
     'aqhi.stationCount': '{count} 個監測站',
     'aqhi.focusHint': '點擊可在地圖上顯示此監測站',
     'aqhi.focusHintCard': '點擊監測站名稱可在地圖上顯示',
+
+    // Station type (General / Roadside)
+    'station.general': '一般',
+    'station.roadside': '路邊',
+    'station.generalHint': '一般監測站 — 反映您大部分時間接觸到的污染水平。',
+    'station.roadsideHint': '路邊監測站 — 於交通繁忙及高樓大廈旁量度。',
+    'station.filterAll': '全部',
+    'station.typeLabel': '監測站類型',
+
+    // Pollutants (Air Quality card, detail section)
+    'poll.title': '污染物詳情',
+    'poll.open': '污染物詳情',
+    'poll.openHint': '開啟各監測站的污染物詳情',
+    'poll.close': '關閉',
+    'poll.aria.dialog': '各監測站的污染物詳情',
+    'poll.aria.chartPicker': '選擇要顯示圖表的污染物',
+
+    'poll.chip.SO2': '二氧化硫',
+    'poll.chip.NO2': '二氧化氮',
+    'poll.chip.O3': '臭氧',
+    'poll.chip.PM10': 'PM10',
+    'poll.chip.PM2.5': 'PM2.5',
+
+    'poll.range.hours': '過去 24 小時',
+
+    'poll.loading': '正在載入污染物數據…',
+    'poll.unavailable':
+      '此部署未能提供污染物詳情（數據來源需要伺服器端代理）。',
+    'poll.error': '無法載入污染物數據：{error}',
+    'poll.none': '沒有污染物數據。',
+    'poll.viewChart': '圖表',
+    'poll.viewTable': '表格',
+    'poll.aria.viewToggle': '切換圖表與表格',
+    'poll.chartTitle': '過去 24 小時污染物濃度',
+    'poll.chartCaption':
+      '{station} 的每小時讀數，單位為微克／立方米。圓點標示最新一小時；折線中斷表示該時段沒有發布讀數。',
+    'poll.seriesLabel': '污染物數列',
+    'poll.legend.NO2': '二氧化氮（NO2）',
+    'poll.legend.O3': '臭氧（O3）',
+    'poll.legend.SO2': '二氧化硫（SO2）',
+    'poll.legend.PM10': '可吸入懸浮粒子（PM10）',
+    'poll.legend.PM2.5': '微細懸浮粒子（PM2.5）',
+    'poll.unit': '微克／立方米',
+    'poll.colPollutant': '污染物',
+    'poll.colLatest': '最新（{unit}）',
+    'poll.colAvg': '三小時平均（{unit}）',
+    'poll.colShare': '佔空氣質素健康指數比重',
+    'poll.colMin': '24 小時最低',
+    'poll.colMax': '24 小時最高',
+    'poll.colAvg24': '24 小時平均',
+    'poll.na': '—',
+    'poll.naHint': '此小時沒有發布讀數。',
+    'poll.averaging':
+      '平均時段：{window}。空氣質素健康指數以三小時移動平均計算上述污染物。',
+    'poll.window1h': '一小時（最新讀數）',
+    'poll.window3h': '三小時',
+    'poll.window24h': '24 小時',
+    'poll.pmBasis': '懸浮粒子以 {basis} 計算（取健康風險較高者）',
+    'poll.noComposition':
+      '此監測站／小時未能計算空氣質素健康指數的組成 — 缺少所需的污染物讀數。',
+    'poll.composedTitle': '此處空氣質素健康指數的組成',
+    'poll.composedCaption':
+      '各污染物在總增加健康風險（%AR）中所佔比重，按環保署公式以三小時移動平均重新計算。環保署公布的是四捨五入後的比重，因此數值可能相差一個百分點。',
+    'poll.arValue': '總增加健康風險：{ar}% → 空氣質素健康指數 {aqhi}',
+    'poll.computedNotice': '由本應用重新計算，並非環保署公布的數字。',
+    'poll.latestAt': '最新讀數 {time}',
+    'poll.stationPicker': '監測站',
+    'poll.noStation': '請選擇監測站以查看其污染物詳情。',
+    'poll.pmNote':
+      'PM10 與 PM2.5 是懸浮粒子的兩種量度方式。空氣質素健康指數取健康風險較高者，因此只會計算其中一項。',
+    'poll.source': '資料來源：環保署空氣質素健康指數過去 24 小時污染物濃度數據。',
+
+    // Pollutant long names (also used by the table)
+    'poll.name.NO2': '二氧化氮',
+    'poll.name.O3': '臭氧',
+    'poll.name.SO2': '二氧化硫',
+    'poll.name.PM10': '可吸入懸浮粒子（PM10）',
+    'poll.name.PM2.5': '微細懸浮粒子（PM2.5）',
+    'poll.short.NO2': 'NO2',
+    'poll.short.O3': 'O3',
+    'poll.short.SO2': 'SO2',
+    'poll.short.PM10': 'PM10',
+    'poll.short.PM2.5': 'PM2.5',
 
     // Beach card
     'beach.title': '泳灘水質',
