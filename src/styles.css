@@ -302,15 +302,36 @@ body {
   flex: 0 0 auto;
 }
 
-.station-list { list-style: none; margin: 0; padding: 0; max-height: 210px; overflow-y: auto; }
+/* Reservation on the right keeps the AQHI figures clear of the card border
+   (and of the scrollbar, when this list overflows) — `scrollbar-gutter` is a
+   no-op in older WebKit, so the padding is the real guarantee. */
+.station-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 0 0;
+  max-height: 210px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
 .station-list li { border-bottom: 1px solid #f0f6f9; }
 
-/* Station row — clickable to focus the map */
+/* Slim scrollbar so it does not eat into the reserved gutter above. */
+.station-list::-webkit-scrollbar { width: 6px; }
+.station-list::-webkit-scrollbar-track { background: transparent; }
+.station-list::-webkit-scrollbar-thumb {
+  background: #cfdee6;
+  border-radius: 3px;
+}
+.station-list::-webkit-scrollbar-thumb:hover { background: #b3cbd8; }
+
+/* Station row — clickable to focus the map.
+   The row reserves its own inner padding, so the right-hand figure never sits
+   flush against the card edge on narrow screens. */
 .station-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 8px;
+  padding: 7px 10px;
   width: 100%;
   border: 0;
   border-radius: 6px;
@@ -321,6 +342,7 @@ body {
   text-align: left;
   cursor: pointer;
 }
+.station-row > b { min-width: 1.4em; text-align: right; }
 .station-row:hover:not(:disabled) { background: #eaf6fb; }
 .station-row:disabled { cursor: default; }
 .station-row.is-active {

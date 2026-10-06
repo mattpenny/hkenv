@@ -220,19 +220,25 @@ export default function MapView({
       wantedLayer.addTo(map);
     }
 
-    // MOBILE NOTE — why we scroll the map into view before flying:
-    // On a phone the cards sit BELOW the map, so tapping a beach name means
-    // the map is scrolled off-screen. Leaflet drives its zoom animation with
-    // requestAnimationFrame, which browsers throttle or suspend for off-screen
-    // content — so the flyTo never finishes painting and the map comes back
-    // half-rendered (a few tiles, no rest) until the user manually zooms.
-    // Bringing the map into view first lets the animation actually run.
+    // Bring the map into view before flying. Two reasons:
+    //  (a) On a phone the cards sit BELOW the map, so tapping a station or beach
+    //      means the map is scrolled off-screen. Leaflet drives its zoom
+    //      animation with requestAnimationFrame, which browsers throttle or
+    //      suspend for off-screen content — so the flyTo never finishes painting
+    //      and the map comes back half-rendered (a few tiles, no rest) until the
+    //      user manually zooms.
+    //  (b) Even when the map is partly visible, the user expects the map — not
+    //      the card they just tapped — to be the focus of the page. Scroll so the
+    //      whole map fits, unless it already does.
     const container = containerRef.current;
+    let scrolled = false;
     if (container) {
       const rect = container.getBoundingClientRect();
-      const offScreen = rect.bottom < 8 || rect.top > window.innerHeight - 8;
-      if (offScreen) {
+      const fullyVisible =
+        rect.top >= 0 && rect.bottom <= window.innerHeight;
+      if (!fullyVisible) {
         container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        scrolled = true;
       }
     }
 
@@ -244,12 +250,20 @@ export default function MapView({
     // dimensions when Leaflet last measured it. Re-measure after the animation
     // window and force a fresh tile pass: this is the step that turns a
     // half-painted map into a complete one without the user touching zoom.
+    //
+    // When we scrolled, the smooth scroll is still running at flyTo's end, so
+    // settle later — and re-measure again afterwards, since the container's
+    // viewport position keeps changing while the page scrolls.
+    const settleDelay = scrolled ? 1250 : 950;
     const settle = setTimeout(() => {
       map.invalidateSize();
       map.eachLayer((layer) => {
         if (layer && typeof layer.redraw === 'function') layer.redraw();
       });
-    }, 950);
+    }, settleDelay);
+    const settleAgain = scrolled
+      ? setTimeout(() => map.invalidateSize(), settleDelay + 500)
+      : null;
 
     const marker = isStation
       ? markerIndexRef.current.station.get(highlight.id)
@@ -263,11 +277,12 @@ export default function MapView({
       popupTimer = setTimeout(() => {
         marker.openPopup();
         triggerPulse(marker, isStation ? 10 : 9);
-      }, 1000);
+      }, settleDelay + 50);
     }
 
     return () => {
       clearTimeout(settle);
+      clearTimeout(settleAgain);
       clearTimeout(popupTimer);
     };
   }, [highlight, showStations, showBeaches]);
