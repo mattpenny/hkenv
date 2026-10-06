@@ -220,9 +220,36 @@ export default function MapView({
       wantedLayer.addTo(map);
     }
 
+    // MOBILE NOTE — why we scroll the map into view before flying:
+    // On a phone the cards sit BELOW the map, so tapping a beach name means
+    // the map is scrolled off-screen. Leaflet drives its zoom animation with
+    // requestAnimationFrame, which browsers throttle or suspend for off-screen
+    // content — so the flyTo never finishes painting and the map comes back
+    // half-rendered (a few tiles, no rest) until the user manually zooms.
+    // Bringing the map into view first lets the animation actually run.
+    const container = containerRef.current;
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      const offScreen = rect.bottom < 8 || rect.top > window.innerHeight - 8;
+      if (offScreen) {
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
     map.flyTo([highlight.lat, highlight.lng], Math.max(map.getZoom(), 14), {
       duration: 0.9,
     });
+
+    // A container that was off-screen may have been laid out with stale
+    // dimensions when Leaflet last measured it. Re-measure after the animation
+    // window and force a fresh tile pass: this is the step that turns a
+    // half-painted map into a complete one without the user touching zoom.
+    const settle = setTimeout(() => {
+      map.invalidateSize();
+      map.eachLayer((layer) => {
+        if (layer && typeof layer.redraw === 'function') layer.redraw();
+      });
+    }, 950);
 
     const marker = isStation
       ? markerIndexRef.current.station.get(highlight.id)
@@ -230,14 +257,19 @@ export default function MapView({
 
     // The marker only exists if its layer is currently rendered. If the user
     // hid that layer, still pan there — just skip the popup.
+    let popupTimer;
     if (marker && map.hasLayer(wantedLayer)) {
       // Delay slightly so the flyTo settles before opening the popup.
-      const timer = setTimeout(() => {
+      popupTimer = setTimeout(() => {
         marker.openPopup();
         triggerPulse(marker, isStation ? 10 : 9);
-      }, 900);
-      return () => clearTimeout(timer);
+      }, 1000);
     }
+
+    return () => {
+      clearTimeout(settle);
+      clearTimeout(popupTimer);
+    };
   }, [highlight, showStations, showBeaches]);
 
   return (
