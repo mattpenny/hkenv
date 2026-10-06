@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { nearest } from '../utils/colorScale.js';
+import { districtRegion } from '../utils/regions.js';
 import { useI18n } from '../i18n/LanguageContext.jsx';
 
 /**
@@ -8,18 +9,39 @@ import { useI18n } from '../i18n/LanguageContext.jsx';
  * Uses the browser's geolocation (or a manual station pick) to find the
  * nearest beach and AQHI station, then gives advice.
  *
- * RAIN NOTE: Neither of the two open datasets this app uses contains rainfall
- * figures, and this app does not call a weather API. Rather than show a
- * warning based on data it does not have, heavy rain in the last 3 days is a
- * self-reported checkbox. Swap in a real rainfall feed here if you want an
- * automatic check (e.g. HKO Open Data API 9-day rainfall forecast).
+ * RAIN: this card used to ask the user to self-report "heavy rain in the last
+ * 3 days", because neither EPD feed carries rainfall. It now shows the real
+ * HKO figure instead — see `useRainfall`. The important caveat is that HKO
+ * publishes only a rolling **1-hour** window, so the UI must label that window
+ * rather than imply a multi-day total it cannot compute.
+ *
+ * `rainfallDistrict` is supplied by App from the shared region selection, so
+ * the card follows the same area the AQHI and beach cards are showing.
  */
-export default function RecommendationCard({ stations, beaches, onHighlight }) {
-  const { t, tRisk, tStation, tBeach } = useI18n();
+/**
+ * Rainfall at or above this (in mm over the past hour) is worth a warning.
+ * HKO reports plenty of 0-1 mm readings that mean nothing for water quality;
+ * warning on those would train the user to ignore the message.
+ */
+const RAIN_WARN_MM = 5;
+
+/** Trim trailing zeros: 12 -> "12", 3.5 -> "3.5". */
+function formatMm(mm) {
+  if (!Number.isFinite(mm)) return '0';
+  return String(Math.round(mm * 10) / 10);
+}
+
+export default function RecommendationCard({
+  stations,
+  beaches,
+  onHighlight,
+  rainfall = null,
+  rainfallDistrict = null,
+}) {
+  const { t, tRisk, tStation, tBeach, tDistrict, formatTime } = useI18n();
   const [point, setPoint] = useState(null); // { lat, lng, label }
   const [status, setStatus] = useState('idle'); // idle | locating | denied | ready | no-data
   const [geoError, setGeoError] = useState(null); // specific reason, shown to the user
-  const [recentRain, setRecentRain] = useState(false);
   const [result, setResult] = useState(null);
 
   function locate() {
@@ -122,12 +144,21 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
       tone = 'warn';
     }
 
-    if (recentRain) {
-      verdict += t('rec.verdict.rain');
+    // Live rainfall for the district the user is actually looking at. Only
+    // warn on a meaningful amount — a trace of rain is not worth alarming
+    // anyone over, and HKO reports sub-millimetre values freely.
+    const rainMm =
+      rainfall && rainfallDistrict && rainfall.byDistrict
+        ? rainfall.byDistrict[rainfallDistrict]
+        : null;
+    const meaningfulRain = typeof rainMm === 'number' && rainMm >= RAIN_WARN_MM;
+
+    if (meaningfulRain) {
+      verdict += t('rec.verdict.rain', { mm: formatMm(rainMm) });
       tone = tone === 'good' ? 'warn' : tone;
     }
 
-    setResult({ verdict, tone, station, beach, recentRain });
+    setResult({ verdict, tone, station, beach, rainMm, meaningfulRain });
     // Pan the map to the recommended spot.
     const target = beach ?? station;
     onHighlight?.({
@@ -140,6 +171,15 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
 
   const pointLabel =
     point == null ? t('rec.noLocation') : point.label === 'me' ? t('rec.useLocation') : point.label;
+
+  // Wettest district in the feed, so the user can see whether rain is nearby
+  // even when their own district is dry.
+  const wettest = rainfall?.byDistrict
+    ? Object.entries(rainfall.byDistrict).reduce(
+        (best, entry) => (best == null || entry[1] > best[1] ? entry : best),
+        null
+      )
+    : null;
 
   return (
     <section className="card">
@@ -191,14 +231,44 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
         </select>
       </label>
 
-      <label className="row checkbox">
-        <input
-          type="checkbox"
-          checked={recentRain}
-          onChange={(e) => setRecentRain(e.target.checked)}
-        />
-        {t('rec.rainedLabel')} <span className="muted">({t('rec.rainedNote')})</span>
-      </label>
+      {/* Observed rainfall — replaces the old self-reported checkbox.
+          HKO only publishes a rolling 1-hour window, so the panel states the
+          window explicitly instead of implying a multi-day total. */}
+      <div className="rain-panel">
+        <div className="rain-head">
+          <span>{t('rec.rainHeader')}</span>
+          {rainfall?.byDistrict && rainfallDistrict && (
+            <b>
+              {formatMm(rainfall.byDistrict[rainfallDistrict] ?? 0)} {rainfall.unit}
+            </b>
+          )}
+        </div>
+
+        {rainfall?.byDistrict ? (
+          <>
+            <small className="muted">
+              {tDistrict(rainfallDistrict)} ·{' '}
+              {t('rec.rainWindow', {
+                start: formatTime(rainfall.startTime),
+                end: formatTime(rainfall.endTime),
+              })}
+            </small>
+            {wettest && wettest[1] > 0 && (
+              <small className="muted">
+                <br />
+                {t('rec.rainMax', {
+                  district: tDistrict(wettest[0]),
+                  mm: formatMm(wettest[1]),
+                })}
+              </small>
+            )}
+          </>
+        ) : (
+          <small className="muted">{t('rec.rainUnavailable')}</small>
+        )}
+
+        <p className="muted footnote">{t('rec.rainNote')}</p>
+      </div>
 
       <button className="btn primary" onClick={recommend} disabled={!point}>
         {t('rec.recommend')}

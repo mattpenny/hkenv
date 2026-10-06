@@ -7,17 +7,20 @@ import DataSourcePanel from './components/DataSourcePanel.jsx';
 import LanguageSwitcher from './components/LanguageSwitcher.jsx';
 import { useAQHI } from './hooks/useAQHI.js';
 import { useBeachQuality } from './hooks/useBeachQuality.js';
+import { useRainfall } from './hooks/useRainfall.js';
 import { useI18n } from './i18n/LanguageContext.jsx';
 import {
   stationRegion,
   districtRegion,
   regionForCoords,
+  rainDistrictForRegion,
 } from './utils/regions.js';
 
 export default function App() {
   const { t, formatLongDate, formatShortDate } = useI18n();
   const { stations, loading: aqhiLoading, error: aqhiError } = useAQHI();
   const { beaches, loading: beachLoading, error: beachError } = useBeachQuality();
+  const { rainfall } = useRainfall();
 
   const [showStations, setShowStations] = useState(true);
   const [showBeaches, setShowBeaches] = useState(true);
@@ -28,6 +31,16 @@ export default function App() {
   // Region tabs are shared by both data cards so they always agree.
   const [region, setRegion] = useState('hongkong');
   const [regionAuto, setRegionAuto] = useState(false);
+
+  /**
+   * Which district the rainfall panel reports on. Derived from the shared
+   * region so the panel always agrees with the two cards above it.
+   *
+   * NOTE: this must be a real district name from the rainfall feed — an AQHI
+   * station name like "Central/Western" is not one, and passing it would look
+   * up `undefined` and report a false 0 mm.
+   */
+  const rainDistrict = rainDistrictForRegion(region);
 
   /**
    * Ask the map to focus a feature and remember it as the active selection.
@@ -164,6 +177,8 @@ export default function App() {
             stations={stations}
             beaches={beaches}
             onHighlight={focusOnMap}
+            rainfall={rainfall}
+            rainfallDistrict={rainDistrict}
           />
         </section>
       </main>

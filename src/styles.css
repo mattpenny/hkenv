@@ -408,6 +408,30 @@ body {
 /* Recommendation */
 .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .row.checkbox { font-size: 0.83rem; }
+
+/* Observed rainfall panel — replaces the old self-reported rain checkbox.
+   Deliberately reads as *information* rather than a warning: it reports what
+   HKO measured, and the user still decides. */
+.rain-panel {
+  border: 1px solid #d9e9f2;
+  background: #f4fafd;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.rain-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+.rain-head b { font-size: 1rem; }
+.rain-panel small { display: block; font-size: 0.76rem; line-height: 1.35; }
+.rain-panel .footnote { margin: 6px 0 0; font-size: 0.72rem; }
+
 .btn {
   border: 1px solid var(--primary);
   background: #fff;

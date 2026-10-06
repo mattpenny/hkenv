@@ -58,16 +58,47 @@ const STATION_REGION = {
   'Tap Mun': 'newterritories',
 };
 
-/** Beach district -> region. Covers all 6 districts that publish beaches. */
+/**
+ * District -> region. Covers all 18 districts.
+ *
+ * The beach feed only publishes 6 districts, but the HKO rainfall feed reports
+ * all 18, so the table must cover every district or the rainfall panel cannot
+ * be filtered by region (it would fall through to 'other').
+ *
+ * Note two easy mistakes, since district names do not follow the region lines:
+ *   - "Kwai Tsing" and "Tsuen Wan" are New Territories, not Kowloon, even
+ *     though they sit immediately north of it.
+ *   - "Islands District" covers Lantau, Cheung Chau, Lamma and the outlying
+ *     islands, all administered as part of the New Territories.
+ */
 const DISTRICT_REGION = {
+  // --- Hong Kong Island ---
+  'Central & Western District': 'hongkong',
+  'Wan Chai': 'hongkong',
+  'Wan Chai District': 'hongkong',
+  'Eastern District': 'hongkong',
   'Southern District': 'hongkong',
 
+  // --- Kowloon ---
+  'Yau Tsim Mong': 'kowloon',
+  'Sham Shui Po': 'kowloon',
+  'Kowloon City': 'kowloon',
+  'Wong Tai Sin': 'kowloon',
+  'Kwun Tong': 'kowloon',
+
+  // --- New Territories ---
+  'Kwai Tsing': 'newterritories',
+  'Tsuen Wan': 'newterritories',
   'Tsuen Wan District': 'newterritories',
+  'Tuen Mun': 'newterritories',
   'Tuen Mun District': 'newterritories',
+  'Yuen Long': 'newterritories',
+  'North District': 'newterritories',
+  'Tai Po': 'newterritories',
   'Tai Po District': 'newterritories',
+  'Sha Tin': 'newterritories',
+  'Sai Kung': 'newterritories',
   'Sai Kung District': 'newterritories',
-  // Lantau, Cheung Chau, Lamma and the other outlying islands are
-  // administered as part of the New Territories.
   'Islands District': 'newterritories',
 };
 
@@ -76,7 +107,7 @@ export function stationRegion(stationName) {
   return STATION_REGION[stationName] ?? 'other';
 }
 
-/** Region for a beach district name (tolerant of a missing " District"). */
+/** Region for a district name (tolerant of a missing " District" suffix). */
 export function districtRegion(districtName) {
   if (!districtName) return 'other';
   const direct = DISTRICT_REGION[districtName];
@@ -96,6 +127,30 @@ const REGION_CENTRES = {
   kowloon: [22.32, 114.18],
   newterritories: [22.42, 114.12],
 };
+
+/**
+ * A representative rainfall district per region.
+ *
+ * Needed because the rainfall feed reports the **18 official districts**, while
+ * this app's cards show three broad regions. An AQHI station name is NOT a
+ * valid district name ("Kwun Tong" is a district, but "Central/Western" is
+ * not), so a station name must never be passed to the rainfall lookup — doing
+ * so silently yields `undefined` and renders 0 mm for the wrong place.
+ *
+ * These are the most central/populous districts of each region, chosen as a
+ * sensible "what is the weather like where most people are" default. Any of
+ * the region's districts would be valid; this is just a stable pick.
+ */
+const REGION_RAIN_DISTRICT = {
+  hongkong: 'Central & Western District',
+  kowloon: 'Yau Tsim Mong',
+  newterritories: 'Sha Tin',
+};
+
+/** A representative rainfall-feed district name for a region. */
+export function rainDistrictForRegion(region) {
+  return REGION_RAIN_DISTRICT[region] ?? null;
+}
 
 /** Nearest region to a lat/lng, by simple squared distance. */
 export function regionForCoords(lat, lng) {

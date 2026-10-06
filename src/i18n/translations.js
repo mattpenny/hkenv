@@ -100,8 +100,6 @@ export const STRINGS = {
     'rec.noLocation': 'No location selected',
     'rec.manualLabel': 'District / station (manual fallback):',
     'rec.chooseStation': 'Choose a station…',
-    'rec.rainedLabel': 'It rained heavily in the last 3 days',
-    'rec.rainedNote': 'you tell us — this app has no rainfall feed',
     'rec.recommend': 'Recommend',
     'rec.denied': 'Location unavailable or permission denied — use the manual dropdown.',
     'rec.retry': 'Try again',
@@ -118,6 +116,15 @@ export const STRINGS = {
     'rec.nearestStation': 'Nearest station: {station} — AQHI {aqhi} ({category}), {distance} km away',
     'rec.nearestBeach': 'Nearest beach: {beach} — {desc}, {distance} km away',
 
+    // Observed rainfall (live HKO feed — a rolling 1-hour window)
+    'rec.rainHeader': 'Rainfall in the past hour',
+    'rec.rainWindow': 'Measured {start} – {end}',
+    'rec.rainNone': 'Trace / none recorded',
+    'rec.rainUnavailable': 'Rainfall data is unavailable right now.',
+    'rec.rainMax': 'Wettest district: {district} — {mm} mm',
+    'rec.rainNote':
+      'A rolling 1-hour reading from the Hong Kong Observatory. Heavy rain raises bacteria levels, and this feed cannot total the last few days — so use your own judgement for older rain.',
+
     // Recommendation verdicts
     'rec.verdict.stayIndoors':
       'Stay indoors — air quality is too poor for outdoor activity.',
@@ -127,7 +134,7 @@ export const STRINGS = {
     'rec.verdict.mixed':
       'Conditions are mixed. Check the details below before heading out.',
     'rec.verdict.rain':
-      ' Heads-up: you reported heavy rain in the last 3 days — runoff can raise bacteria levels, so swimming soon after rain is not advised.',
+      ' Heads-up: {mm} mm of rain was recorded nearby in the past hour — runoff can raise bacteria levels, so swimming soon after rain is not advised.',
 
     // Map popups
     'popup.aqhi': 'AQHI',
@@ -143,6 +150,7 @@ export const STRINGS = {
       'This app is for reference only and is not affiliated with the Government of Hong Kong. For personal, non-commercial use.',
     'footer.aqhiLink': 'EPD Air Quality Health Index',
     'footer.beachLink': 'EPD Beach Water Quality',
+    'footer.rainLink': 'HKO Rainfall in the Past Hour',
     'footer.mapTiles': 'Map tiles ©',
     'footer.contributors': 'contributors',
   },
@@ -223,8 +231,6 @@ export const STRINGS = {
     'rec.noLocation': '未選擇位置',
     'rec.manualLabel': '地區 / 監測站（手動選擇）：',
     'rec.chooseStation': '請選擇監測站…',
-    'rec.rainedLabel': '過去三日曾下大雨',
-    'rec.rainedNote': '由您自行申報 — 本應用沒有雨量數據',
     'rec.recommend': '建議',
     'rec.denied': '無法取得位置或被拒絕授權 — 請使用手動選單。',
     'rec.retry': '重試',
@@ -238,6 +244,15 @@ export const STRINGS = {
     'rec.nearestStation': '最近的監測站：{station} — 空氣質素健康指數 {aqhi}（{category}），距離 {distance} 公里',
     'rec.nearestBeach': '最近的泳灘：{beach} — {desc}，距離 {distance} 公里',
 
+    // Observed rainfall (live HKO feed — a rolling 1-hour window)
+    'rec.rainHeader': '過去一小時雨量',
+    'rec.rainWindow': '測量時段 {start} – {end}',
+    'rec.rainNone': '微量 / 沒有記錄',
+    'rec.rainUnavailable': '暫時無法取得雨量數據。',
+    'rec.rainMax': '雨量最高的地區：{district} — {mm} 毫米',
+    'rec.rainNote':
+      '此為香港天文台的滾動一小時讀數。大雨會令細菌含量上升，而本數據源無法計算過去數日的總雨量 — 較早期的降雨請自行判斷。',
+
     // Recommendation verdicts
     'rec.verdict.stayIndoors': '請留在室內 — 空氣質素欠佳，不適合戶外活動。',
     'rec.verdict.skipBeach':
@@ -245,7 +260,7 @@ export const STRINGS = {
     'rec.verdict.goodDay': '適合外出 — 環境狀況良好。',
     'rec.verdict.mixed': '狀況一般，外出前請先查看下方詳情。',
     'rec.verdict.rain':
-      ' 請注意：您表示過去三日曾下大雨 — 雨水沖刷可能令細菌含量上升，不建議雨後立即游泳。',
+      ' 請注意：過去一小時附近錄得 {mm} 毫米雨量 — 雨水沖刷可能令細菌含量上升，不建議雨後立即游泳。',
 
     // Map popups
     'popup.aqhi': '空氣質素健康指數',
@@ -261,6 +276,7 @@ export const STRINGS = {
       '本應用僅供參考，與香港政府無關。僅供個人非商業用途。',
     'footer.aqhiLink': '環保署空氣質素健康指數',
     'footer.beachLink': '環保署泳灘水質',
+    'footer.rainLink': '天文台過去一小時雨量',
     'footer.mapTiles': '地圖圖塊 ©',
     'footer.contributors': '貢獻者',
   },
@@ -324,13 +340,46 @@ export function stationLabel(name, lang) {
  * Beach district name -> Chinese label.
  * Like the stations, the beach feed is English-only.
  */
+/**
+ * District -> Chinese label.
+ *
+ * Two naming schemes appear in the feeds:
+ *   - the beach feed uses the official "X District" form (6 districts, the only
+ *     ones that have gazetted beaches)
+ *   - the HKO rainfall feed uses the shorter "X" form for most districts
+ *     ("Sai Kung", "Sha Tin", "Kwun Tong") but keeps " District" on the
+ *     island-based ones ("Southern District", "Islands District")
+ *
+ * Both spellings are listed so a name from either source translates. Anything
+ * unmatched falls back to the English name, so a new district never renders
+ * blank.
+ */
 export const DISTRICT_NAMES_ZH = {
+  // --- Beach feed spellings ("X District") ---
   'Southern District': '南區',
   'Tsuen Wan District': '荃灣區',
   'Tuen Mun District': '屯門區',
   'Tai Po District': '大埔區',
   'Sai Kung District': '西貢區',
   'Islands District': '離島區',
+
+  // --- All 18 districts, HKO rainfall feed spellings ---
+  'Central & Western District': '中西區',
+  'Eastern District': '東區',
+  'Kwai Tsing': '葵青區',
+  'North District': '北區',
+  'Sai Kung': '西貢區',
+  'Sha Tin': '沙田區',
+  'Tai Po': '大埔區',
+  'Tsuen Wan': '荃灣區',
+  'Tuen Mun': '屯門區',
+  'Wan Chai': '灣仔區',
+  'Yuen Long': '元朗區',
+  'Yau Tsim Mong': '油尖旺區',
+  'Sham Shui Po': '深水埗區',
+  'Kowloon City': '九龍城區',
+  'Wong Tai Sin': '黃大仙區',
+  'Kwun Tong': '觀塘區',
 };
 
 /** Translate a beach district name for the active language. */

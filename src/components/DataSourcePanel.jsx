@@ -75,6 +75,14 @@ export default function DataSourcePanel() {
             >
               {t('footer.beachLink')}
             </a>{' '}
+            ·{' '}
+            <a
+              href="https://data.gov.hk/en-data/dataset/hk-hko-rss-rainfall-in-the-past-hour"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('footer.rainLink')}
+            </a>{' '}
             · {t('footer.mapTiles')}{' '}
             <a
               href="https://www.openstreetmap.org/copyright"

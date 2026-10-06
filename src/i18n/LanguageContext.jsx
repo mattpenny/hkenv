@@ -133,6 +133,23 @@ export function LanguageProvider({ children }) {
     [lang]
   );
 
+  /**
+   * Time only (no date). Used for the rainfall observation window, where the
+   * two ends are always within the same hour and a date would be noise.
+   */
+  const formatTime = useCallback(
+    (value) => {
+      if (!value) return '';
+      const d = value instanceof Date ? value : new Date(value);
+      if (isNaN(d.getTime())) return String(value);
+      return d.toLocaleTimeString(lang === 'zh' ? 'zh-HK' : 'en-HK', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    },
+    [lang]
+  );
+
   const value = useMemo(
     () => ({
       lang,
@@ -145,6 +162,7 @@ export function LanguageProvider({ children }) {
       formatDateTime,
       formatLongDate,
       formatShortDate,
+      formatTime,
     }),
     [
       lang,
@@ -156,6 +174,7 @@ export function LanguageProvider({ children }) {
       formatDateTime,
       formatLongDate,
       formatShortDate,
+      formatTime,
     ]
   );
 

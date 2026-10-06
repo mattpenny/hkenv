@@ -53,10 +53,33 @@ app ever shows an empty air-quality card, re-check the URL on the
 
 ### Rainfall
 
-Neither dataset contains rainfall data and this app calls no weather API. The  
-"rained heavily in the last 3 days" warning is therefore an explicitly  
-**self-reported checkbox**, not an automatic check. To automate it, call the  
-HKO Open Data API 9-day rainfall forecast in `RecommendationCard.jsx`.
+Rainfall comes from the Hong Kong Observatory's **"Rainfall in the past hour
+from Automatic Weather Station"** dataset
+([data.gov.hk](https://data.gov.hk/en-data/dataset/hk-hko-rss-rainfall-in-the-past-hour)),
+consumed through its API resource - see `src/hooks/useRainfall.js`.
+
+Two HKO products were evaluated. The dataset page advertises
+`hourlyRainfall.php`, which returns **36 individual automatic weather stations
+as point readings** and would need a coordinate table. The app instead uses the
+`rainfall` block of the general current-weather endpoint
+(`weather.php?dataType=rhrread`), which carries the same rolling 1-hour window
+but already aggregates to the **18 official districts by name** - the same
+naming the rest of the app uses, with no coordinates to maintain.
+
+Unlike the EPD feeds, this host sends `Access-Control-Allow-Origin: *`, so the
+browser calls it **directly - no serverless proxy is needed**.
+
+**Important limitation:** HKO publishes *only* a rolling 1-hour window. There is
+no 24-hour or multi-day accumulated product (`rainfall24hr.php` 404s, and the
+`r` parameter is ignored), so "did it rain heavily in the last 3 days?" is not
+answerable from this feed. A true 3-day total would require accumulating samples
+server-side over time. The UI therefore states the measured window explicitly
+and never implies a multi-day total. The card shows the reading for the
+currently selected region's district, and warns only at or above
+`RAIN_WARN_MM` (5 mm/hour) so trace readings do not cause false alarms.
+
+If the rainfall feed is unavailable the card says so and the rest of the app is
+unaffected.
 
 ## Layout
 
