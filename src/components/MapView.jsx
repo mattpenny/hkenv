@@ -22,7 +22,7 @@ export default function MapView({
   showBeaches,
   highlight, // { type: 'station'|'beach', id, lat, lng }
 }) {
-  const { t, tRisk, tStation, tDistrict, formatDateTime, lang } = useI18n();
+  const { t, tRisk, tStation, tDistrict, tBeach, formatDateTime, lang } = useI18n();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const stationLayerRef = useRef(null);
@@ -195,42 +195,50 @@ export default function MapView({
       // The feed's `desc` is English-only, so prefer the translated grade.
       const gradeText = b.grade ? t(`beach.grade${b.grade}`) : b.desc || `Grade ${b.grade}`;
       marker.bindPopup(
-        `<strong>${b.name}</strong><br/>${tDistrict(b.district)}<br/>${gradeText}<br/>` +
+        `<strong>${tBeach(b.name)}</strong><br/>${tDistrict(b.district)}<br/>${gradeText}<br/>` +
           `<small>${t('popup.beachRetrieved', { time: retrieved })}<br/>${t('beach.noSamplingDate')}</small>`
       );
       markerIndexRef.current.beach.set(b.name, marker);
       layer.addLayer(marker);
     });
-  }, [beaches, showBeaches, lang, t, tDistrict, formatDateTime]);
+  }, [beaches, showBeaches, lang, t, tBeach, tDistrict, formatDateTime]);
 
-  // ---- Pan to, open and pulse a recommended location ----
+  // ---- Pan to, open and pulse a selected location ----
+  // Triggered by clicking a station row or a beach chip in the side panels.
   useEffect(() => {
     if (!highlight || !mapRef.current) return;
     const map = mapRef.current;
-    map.flyTo([highlight.lat, highlight.lng], Math.max(map.getZoom(), 13), {
+
+    const isStation = highlight.type === 'station';
+    const wantedLayer = isStation ? stationLayerRef.current : beachLayerRef.current;
+    const wantedShown = isStation ? showStations : showBeaches;
+
+    // Respect the layer checkboxes: make sure the layer holding the target is
+    // actually on, but never force-hide the other one — the user's own toggles
+    // must survive (previously the *other* layer was removed and stayed gone).
+    if (wantedLayer && wantedShown && !map.hasLayer(wantedLayer)) {
+      wantedLayer.addTo(map);
+    }
+
+    map.flyTo([highlight.lat, highlight.lng], Math.max(map.getZoom(), 14), {
       duration: 0.9,
     });
 
-    // Ensure the relevant layer is visible before opening its popup.
-    const wantedLayer =
-      highlight.type === 'station' ? stationLayerRef.current : beachLayerRef.current;
-    const otherLayer =
-      highlight.type === 'station' ? beachLayerRef.current : stationLayerRef.current;
-    otherLayer?.remove();
-    if (wantedLayer && !map.hasLayer(wantedLayer)) wantedLayer.addTo(map);
+    const marker = isStation
+      ? markerIndexRef.current.station.get(highlight.id)
+      : markerIndexRef.current.beach.get(highlight.id);
 
-    const marker =
-      highlight.type === 'station'
-        ? markerIndexRef.current.station.get(highlight.id)
-        : markerIndexRef.current.beach.get(highlight.id);
-    if (marker) {
+    // The marker only exists if its layer is currently rendered. If the user
+    // hid that layer, still pan there — just skip the popup.
+    if (marker && map.hasLayer(wantedLayer)) {
       // Delay slightly so the flyTo settles before opening the popup.
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         marker.openPopup();
-        triggerPulse(marker, 10);
+        triggerPulse(marker, isStation ? 10 : 9);
       }, 900);
+      return () => clearTimeout(timer);
     }
-  }, [highlight]);
+  }, [highlight, showStations, showBeaches]);
 
   return (
     <div

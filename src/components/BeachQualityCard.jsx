@@ -4,7 +4,15 @@ import { districtRegion } from '../utils/regions.js';
 import { useI18n } from '../i18n/LanguageContext.jsx';
 import RegionTabs from './RegionTabs.jsx';
 
-/** Beach water quality: warning banner + grid of beaches with grade badges. */
+/**
+ * Beach water quality: warning banner + grid of beaches with grade badges.
+ *
+ * Sorted best-first (Grade 1 -> 4) so the beaches actually worth visiting are
+ * at the top, with the name as a stable tie-break. Layout order is
+ * row-major, so this also reads left-to-right, top-to-bottom on screen.
+ *
+ * Each chip is a button: clicking it pans the map to that beach.
+ */
 export default function BeachQualityCard({
   beaches,
   loading,
@@ -12,13 +20,21 @@ export default function BeachQualityCard({
   region,
   onRegionChange,
   regionAuto,
+  onSelect,
+  activeId,
 }) {
-  const { t, tDistrict, formatDateTime } = useI18n();
+  const { t, tBeach, tDistrict, formatDateTime } = useI18n();
 
-  const inRegion = useMemo(
-    () => beaches.filter((b) => districtRegion(b.district) === region),
-    [beaches, region]
-  );
+  const inRegion = useMemo(() => {
+    const list = beaches.filter((b) => districtRegion(b.district) === region);
+    // Grade 1 (Good) first. `beachCode` breaks ties so the order never jitters
+    // between renders or languages.
+    return [...list].sort(
+      (a, b) =>
+        (a.grade ?? 99) - (b.grade ?? 99) ||
+        String(a.beachCode || a.name).localeCompare(String(b.beachCode || b.name))
+    );
+  }, [beaches, region]);
 
   if (loading)
     return (
@@ -62,27 +78,44 @@ export default function BeachQualityCard({
             count: bad.length,
             plural: bad.length > 1 ? 'es' : '',
           })}{' '}
-          {bad.slice(0, 3).map((b) => b.name).join(', ')}
+          {bad.slice(0, 3).map((b) => tBeach(b.name)).join(', ')}
           {bad.length > 3 ? '…' : ''}
         </div>
       )}
       <div className="beach-grid">
-        {inRegion.map((b) => (
-          <div className="beach-chip" key={b.beachCode || b.name}>
-            <span className="badge" style={{ background: beachGradeColor(b.grade) }}>
-              {b.grade}
-            </span>
-            <div className="beach-meta">
-              <strong>{b.name}</strong>
-              <small className="muted">
-                {tDistrict(b.district)} · {t(`beach.grade${b.grade}`)}
-              </small>
-            </div>
-          </div>
-        ))}
+        {inRegion.map((b) => {
+          const id = b.beachCode || b.name;
+          return (
+            <button
+              type="button"
+              className={`beach-chip${activeId === id ? ' is-active' : ''}`}
+              key={id}
+              title={t('beach.focusHint')}
+              onClick={() =>
+                onSelect?.({
+                  type: 'beach',
+                  id: b.name,
+                  lat: b.latitude,
+                  lng: b.longitude,
+                })
+              }
+              disabled={b.latitude == null || b.longitude == null}
+            >
+              <span className="badge" style={{ background: beachGradeColor(b.grade) }}>
+                {b.grade}
+              </span>
+              <div className="beach-meta">
+                <strong>{tBeach(b.name)}</strong>
+                <small className="muted">
+                  {tDistrict(b.district)} · {t(`beach.grade${b.grade}`)}
+                </small>
+              </div>
+            </button>
+          );
+        })}
       </div>
       <p className="muted footnote">
-        {t('beach.closedExcluded')} {t('beach.retrieved', { time: retrieved })}
+        {t('beach.closedExcluded')} {t('beach.bestFirst')} {t('beach.retrieved', { time: retrieved })}
       </p>
     </Card>
   );

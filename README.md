@@ -58,6 +58,32 @@ Neither dataset contains rainfall data and this app calls no weather API. The
 **self-reported checkbox**, not an automatic check. To automate it, call the  
 HKO Open Data API 9-day rainfall forecast in `RecommendationCard.jsx`.
 
+## Interface
+
+- **Language** - English / 繁體中文 toggle in the header. The choice is saved to
+  `localStorage`; on a first visit it is inferred from the browser locale.
+- **Area tabs** - Hong Kong Island / Kowloon / New Territories, on both data
+  cards. The selection is shared, so the two cards can never disagree. It
+  defaults to the visitor's GPS region (see `src/utils/regions.js`); tapping a
+  tab switches off the "set from your location" hint.
+- **Beach ordering** - beaches are sorted **best water quality first**
+  (Grade 1 to 4), with the beach code as a stable tie-break.
+- **Click to focus** - clicking a station row, the AQHI headline, or a beach
+  chip pans the map to that point and opens its popup, outlining the active
+  item. This respects the layer checkboxes: with the beach layer hidden,
+  clicking a beach still pans there but does not force the layer back on.
+- **Legend** - collapsed by default and expands on tap, so it does not cover
+  the map on a phone.
+
+### Both feeds are English-only
+
+Neither feed publishes Chinese names, so the app keeps translation tables in
+`src/i18n/translations.js` (`STATION_NAMES_ZH`, `DISTRICT_NAMES_ZH`,
+`BEACH_NAMES_ZH`). The English name stays the internal key and the table
+supplies the display name. Anything missing falls back to the English name, so
+a newly added station, district, or beach never renders a blank label - it just
+shows in English until a translation is added.
+
 ## Setup
 
 ```bash

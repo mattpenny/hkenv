@@ -22,10 +22,23 @@ export default function App() {
   const [showStations, setShowStations] = useState(true);
   const [showBeaches, setShowBeaches] = useState(true);
   const [highlight, setHighlight] = useState(null);
+  // What the user last picked in a card, so that card can show it as selected.
+  const [activeId, setActiveId] = useState(null);
 
   // Region tabs are shared by both data cards so they always agree.
   const [region, setRegion] = useState('hongkong');
   const [regionAuto, setRegionAuto] = useState(false);
+
+  /**
+   * Ask the map to focus a feature and remember it as the active selection.
+   * `nonce` guarantees the MapView effect re-runs even when the user clicks
+   * the same item twice (it would otherwise be an identical value).
+   */
+  const focusOnMap = useCallback((target) => {
+    if (!target || target.lat == null || target.lng == null) return;
+    setActiveId(target.id ?? null);
+    setHighlight({ ...target, nonce: Date.now() });
+  }, []);
 
   // Default the area from the visitor's GPS once (no prompt storm: we ask a
   // single time, silently ignore denial, and never override a manual pick).
@@ -122,6 +135,8 @@ export default function App() {
             region={region}
             onRegionChange={handleRegionChange}
             regionAuto={regionAuto}
+            onSelect={focusOnMap}
+            activeId={activeId}
           />
           <BeachQualityCard
             beaches={beaches}
@@ -130,11 +145,13 @@ export default function App() {
             region={region}
             onRegionChange={handleRegionChange}
             regionAuto={regionAuto}
+            onSelect={focusOnMap}
+            activeId={activeId}
           />
           <RecommendationCard
             stations={stations}
             beaches={beaches}
-            onHighlight={(h) => setHighlight({ ...h, nonce: Date.now() })}
+            onHighlight={focusOnMap}
           />
         </aside>
       </main>

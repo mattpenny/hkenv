@@ -15,26 +15,78 @@ import { useI18n } from '../i18n/LanguageContext.jsx';
  * automatic check (e.g. HKO Open Data API 9-day rainfall forecast).
  */
 export default function RecommendationCard({ stations, beaches, onHighlight }) {
-  const { t, tRisk, tStation } = useI18n();
+  const { t, tRisk, tStation, tBeach } = useI18n();
   const [point, setPoint] = useState(null); // { lat, lng, label }
   const [status, setStatus] = useState('idle'); // idle | locating | denied | ready | no-data
+  const [geoError, setGeoError] = useState(null); // specific reason, shown to the user
   const [recentRain, setRecentRain] = useState(false);
   const [result, setResult] = useState(null);
 
   function locate() {
+    setGeoError(null);
+
+    // 1. Feature detection. Some browsers expose navigator.geolocation but
+    //    silently refuse to call back, so also guard the insecure-context case.
     if (!navigator.geolocation) {
       setStatus('denied');
+      setGeoError(t('rec.err.unsupported'));
       return;
     }
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      // Geolocation is blocked on plain http:// (except localhost).
+      setStatus('denied');
+      setGeoError(t('rec.err.insecure'));
+      return;
+    }
+
+    // 2. Always leave the button in a visible state, even if the browser
+    //    never calls back. Without this, a hung prompt looks like a dead button.
     setStatus('locating');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setPoint({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: 'me' });
-        setStatus('ready');
-      },
-      () => setStatus('denied'),
-      { timeout: 8000 }
-    );
+
+    let settled = false;
+    const watchdog = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setStatus('denied');
+      setGeoError(t('rec.err.timeout'));
+    }, 12000);
+
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(watchdog);
+          setPoint({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            label: 'me',
+            accuracy: pos.coords.accuracy,
+          });
+          setStatus('ready');
+        },
+        (err) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(watchdog);
+          setStatus('denied');
+          // err.code: 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
+          if (err && err.code === 1) setGeoError(t('rec.err.permission'));
+          else if (err && err.code === 2) setGeoError(t('rec.err.unavailable'));
+          else if (err && err.code === 3) setGeoError(t('rec.err.timeout'));
+          else setGeoError(t('rec.err.unknown'));
+        },
+        // Do not cache a stale fix; give the browser a real chance to answer.
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
+      );
+    } catch (err) {
+      // Some browsers throw synchronously (rare, but it looks like a dead button).
+      if (settled) return;
+      settled = true;
+      clearTimeout(watchdog);
+      setStatus('denied');
+      setGeoError(t('rec.err.unknown'));
+    }
   }
 
   function useStation(s) {
@@ -96,11 +148,30 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
       </div>
 
       <div className="row">
-        <button className="btn" onClick={locate} disabled={status === 'locating'}>
+        <button
+          className="btn"
+          onClick={locate}
+          disabled={status === 'locating'}
+          type="button"
+        >
           {status === 'locating' ? t('rec.locating') : `📍 ${t('rec.useLocation')}`}
         </button>
         <span className="muted">{pointLabel}</span>
       </div>
+
+      {geoError && (
+        <p className="error" role="alert">
+          {geoError}{' '}
+          <button
+            type="button"
+            className="link-btn"
+            onClick={locate}
+            hidden={status === 'locating'}
+          >
+            {t('rec.retry')}
+          </button>
+        </p>
+      )}
 
       <label className="row muted">
         {t('rec.manualLabel')}
@@ -133,7 +204,7 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
         {t('rec.recommend')}
       </button>
 
-      {status === 'denied' && <p className="error">{t('rec.denied')}</p>}
+      {status === 'denied' && !geoError && <p className="error">{t('rec.denied')}</p>}
       {status === 'no-data' && <p className="error">{t('rec.noData')}</p>}
 
       {result && (
@@ -153,7 +224,7 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
             <small>
               <br />
               {t('rec.nearestBeach', {
-                beach: result.beach.name,
+                beach: tBeach(result.beach.name),
                 // The feed's `desc` is English-only; prefer our translated grade.
                 desc: result.beach.grade ? t(`beach.grade${result.beach.grade}`) : result.beach.desc,
                 distance: result.beach.distanceKm?.toFixed(1),

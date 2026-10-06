@@ -59,6 +59,8 @@ export const STRINGS = {
     'aqhi.healthRisk': 'Health risk',
     'aqhi.na': 'n/a',
     'aqhi.stationCount': '{count} stations',
+    'aqhi.focusHint': 'Click to show this station on the map',
+    'aqhi.focusHintCard': 'Click the station name to show it on the map',
 
     // Beach card
     'beach.title': 'Beach Water Quality',
@@ -68,6 +70,8 @@ export const STRINGS = {
     'beach.emptyInRegion': 'No beaches in service in this area.',
     'beach.warning': '{count} beach{plural} at Grade 3 or 4 — avoid swimming:',
     'beach.retrieved': 'Data retrieved {time}.',
+    'beach.bestFirst': 'Sorted best water quality first.',
+    'beach.focusHint': 'Click to show this beach on the map',
     'beach.noSamplingDate': '(feed does not publish a sampling date)',
     'beach.closedExcluded': 'Beaches closed for the season are excluded.',
     'beach.count': '{count} beaches',
@@ -90,6 +94,16 @@ export const STRINGS = {
     'rec.rainedNote': 'you tell us — this app has no rainfall feed',
     'rec.recommend': 'Recommend',
     'rec.denied': 'Location unavailable or permission denied — use the manual dropdown.',
+    'rec.retry': 'Try again',
+    'rec.err.unsupported': 'This browser does not support location. Use the dropdown instead.',
+    'rec.err.insecure':
+      'Location is blocked because this page is not served over HTTPS. Use the dropdown instead.',
+    'rec.err.permission':
+      'Location permission was denied. Allow location access in your browser settings, then try again.',
+    'rec.err.unavailable':
+      'Your location could not be determined right now. Try again, or pick a station below.',
+    'rec.err.timeout': 'Location request timed out. Try again, or pick a station below.',
+    'rec.err.unknown': 'Could not get your location. Please pick a station below.',
     'rec.noData': 'No nearby data found.',
     'rec.nearestStation': 'Nearest station: {station} — AQHI {aqhi} ({category}), {distance} km away',
     'rec.nearestBeach': 'Nearest beach: {beach} — {desc}, {distance} km away',
@@ -167,6 +181,8 @@ export const STRINGS = {
     'aqhi.healthRisk': '健康風險',
     'aqhi.na': '無資料',
     'aqhi.stationCount': '{count} 個監測站',
+    'aqhi.focusHint': '點擊可在地圖上顯示此監測站',
+    'aqhi.focusHintCard': '點擊監測站名稱可在地圖上顯示',
 
     // Beach card
     'beach.title': '泳灘水質',
@@ -176,6 +192,8 @@ export const STRINGS = {
     'beach.emptyInRegion': '此地區沒有開放中的泳灘。',
     'beach.warning': '{count} 個泳灘為三級或四級 — 請避免游泳：',
     'beach.retrieved': '數據擷取時間 {time}。',
+    'beach.bestFirst': '已按水質由最好至最差排序。',
+    'beach.focusHint': '點擊可在地圖上顯示此泳灘',
     'beach.noSamplingDate': '（數據來源不提供採樣日期）',
     'beach.closedExcluded': '已剔除季節性關閉的泳灘。',
     'beach.count': '{count} 個泳灘',
@@ -198,6 +216,13 @@ export const STRINGS = {
     'rec.rainedNote': '由您自行申報 — 本應用沒有雨量數據',
     'rec.recommend': '建議',
     'rec.denied': '無法取得位置或被拒絕授權 — 請使用手動選單。',
+    'rec.retry': '重試',
+    'rec.err.unsupported': '此瀏覽器不支援定位功能，請使用下方選單。',
+    'rec.err.insecure': '此頁面並非以 HTTPS 提供，瀏覽器已封鎖定位功能。請使用下方選單。',
+    'rec.err.permission': '定位權限被拒絕。請在瀏覽器設定中允許存取位置，然後再試一次。',
+    'rec.err.unavailable': '暫時無法確定您的位置。請再試一次，或於下方選擇監測站。',
+    'rec.err.timeout': '定位請求逾時。請再試一次，或於下方選擇監測站。',
+    'rec.err.unknown': '無法取得您的位置，請於下方選擇監測站。',
     'rec.noData': '附近沒有相關數據。',
     'rec.nearestStation': '最近的監測站：{station} — 空氣質素健康指數 {aqhi}（{category}），距離 {distance} 公里',
     'rec.nearestBeach': '最近的泳灘：{beach} — {desc}，距離 {distance} 公里',
@@ -299,5 +324,77 @@ export const DISTRICT_NAMES_ZH = {
 /** Translate a beach district name for the active language. */
 export function districtLabel(name, lang) {
   if (lang === 'zh') return DISTRICT_NAMES_ZH[name] ?? name;
+  return name;
+}
+
+/**
+ * Beach name -> Chinese label.
+ *
+ * The feed is English-only, so these are the official EPD Chinese beach names.
+ * Keys are the TRIMMED English names exactly as the feed reports them (the raw
+ * feed has stray trailing spaces on a few names; useBeachQuality trims them).
+ * `beachLabel()` falls back to the English name, so adding a beach never
+ * renders a blank chip.
+ */
+export const BEACH_NAMES_ZH = {
+  // Southern District
+  'Big Wave Bay Beach': '大浪灣泳灘',
+  'Chung Hom Kok Beach': '舂坎角泳灘',
+  'Deep Water Bay Beach': '深水灣泳灘',
+  'Hairpin Beach': '夏萍灣泳灘',
+  'Middle Bay Beach': '中灣泳灘',
+  'Repulse Bay Beach': '淺水灣泳灘',
+  'Rocky Bay Beach': '石澳後灘泳灘',
+  'Shek O Beach': '石澳泳灘',
+  'South Bay Beach': '南灣泳灘',
+  "St. Stephen's Beach": '聖士提反灣泳灘',
+  'Stanley Main Beach': '赤柱正灘泳灘',
+  'Turtle Cove Beach': '龜背灣泳灘',
+
+  // Tsuen Wan District
+  "Anglers' Beach": '釣魚灣泳灘',
+  'Approach Beach': '近水灣泳灘',
+  'Casam Beach': '更生灣泳灘',
+  'Gemini Beaches': '雙仙灣泳灘',
+  'Hoi Mei Wan Beach': '海美灣泳灘',
+  'Lido Beach': '麗都灣泳灘',
+  'Ma Wan Tung Wan Beach': '馬灣東灣泳灘',
+  'Ting Kau Beach': '汀九泳灘',
+
+  // Tuen Mun District
+  'Butterfly Beach': '蝴蝶灣泳灘',
+  'Cafeteria New Beach': '新咖啡灣泳灘',
+  'Cafeteria Old Beach': '舊咖啡灣泳灘',
+  'Castle Peak Beach': '青山灣泳灘',
+  'Golden Beach': '黃金泳灘',
+  'Kadoorie Beach': '加多利灣泳灘',
+
+  // Sai Kung District
+  'Clear Water Bay First Beach': '清水灣第一灣泳灘',
+  'Clear Water Bay Second Beach': '清水灣第二灣泳灘',
+  'Hap Mun Bay Beach': '廈門灣泳灘',
+  'Kiu Tsui Beach': '橋咀泳灘',
+  'Silverstrand Beach': '銀線灣泳灘',
+  'Trio Beach': '三星灣泳灘',
+
+  // Islands District
+  'Cheung Chau Tung Wan Beach': '長洲東灣泳灘',
+  'Discovery Bay Tai Pak Beach': '愉景灣大白灣泳灘',
+  'Hung Shing Yeh Beach': '洪聖爺灣泳灘',
+  'Kwun Yam Beach': '觀音灣泳灘',
+  'Lo So Shing Beach': '蘆鬚城泳灘',
+  'Lower Cheung Sha Beach': '下長沙泳灘',
+  'Pui O Beach': '貝澳泳灘',
+  'Silver Mine Bay Beach': '銀礦灣泳灘',
+  'Tong Fuk Beach': '塘福泳灘',
+  'Upper Cheung Sha Beach': '上長沙泳灘',
+
+  // Tai Po District
+  'Tai Po Lung Mei Beach': '大埔龍尾泳灘',
+};
+
+/** Translate a beach name for the active language. */
+export function beachLabel(name, lang) {
+  if (lang === 'zh') return BEACH_NAMES_ZH[name] ?? name;
   return name;
 }

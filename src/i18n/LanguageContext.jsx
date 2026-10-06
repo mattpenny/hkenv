@@ -4,6 +4,7 @@ import {
   RISK_LABELS,
   stationLabel as stationLabelFor,
   districtLabel as districtLabelFor,
+  beachLabel as beachLabelFor,
 } from './translations.js';
 
 /**
@@ -82,6 +83,9 @@ export function LanguageProvider({ children }) {
   /** Translate a beach district name (falls back to the English name). */
   const tDistrict = useCallback((name) => districtLabelFor(name, lang), [lang]);
 
+  /** Translate a beach name (falls back to the English name). */
+  const tBeach = useCallback((name) => beachLabelFor(name, lang), [lang]);
+
   /** Format a date/time in the active locale. */
   const formatDateTime = useCallback(
     (value) => {
@@ -114,8 +118,18 @@ export function LanguageProvider({ children }) {
   );
 
   const value = useMemo(
-    () => ({ lang, setLang, t, tRisk, tStation, tDistrict, formatDateTime, formatLongDate }),
-    [lang, t, tRisk, tStation, tDistrict, formatDateTime, formatLongDate]
+    () => ({
+      lang,
+      setLang,
+      t,
+      tRisk,
+      tStation,
+      tDistrict,
+      tBeach,
+      formatDateTime,
+      formatLongDate,
+    }),
+    [lang, t, tRisk, tStation, tDistrict, tBeach, formatDateTime, formatLongDate]
   );
 
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>;

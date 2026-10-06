@@ -9,6 +9,8 @@ import RegionTabs from './RegionTabs.jsx';
  *
  * Region state is owned by App (so both cards + GPS default share one
  * source of truth) and received here via `region` / `onRegionChange`.
+ *
+ * Station rows are buttons: clicking one pans the map to that station.
  */
 export default function AirQualityCard({
   stations,
@@ -17,6 +19,8 @@ export default function AirQualityCard({
   region,
   onRegionChange,
   regionAuto,
+  onSelect,
+  activeId,
 }) {
   const { t, tRisk, tStation, formatDateTime } = useI18n();
 
@@ -65,29 +69,56 @@ export default function AirQualityCard({
     ? formatDateTime(worst.timestamp)
     : formatDateTime(worst.fetchedAt);
 
+  const focus = (s) =>
+    onSelect?.({
+      type: 'station',
+      id: s.station,
+      lat: s.latitude,
+      lng: s.longitude,
+    });
+
   return (
     <Card title={t('aqhi.title')} headerExtra={tabs}>
-      <div className="aqhi-hero" style={{ borderColor: color }}>
+      <button
+        type="button"
+        className="aqhi-hero"
+        style={{ borderColor: color }}
+        title={t('aqhi.focusHint')}
+        onClick={() => focus(worst)}
+        disabled={worst.latitude == null || worst.longitude == null}
+      >
         <div className="aqhi-number" style={{ background: color }}>
           {worst.aqhi ?? t('aqhi.na')}
         </div>
-        <div>
+        <div className="aqhi-hero-text">
           <strong>{t('aqhi.highest', { station: tStation(worst.station) })}</strong>
           <div>
             {t('aqhi.healthRisk')}: <b>{tRisk(worst.category)}</b>
           </div>
           <small className="muted">{t('aqhi.published', { time: updated })}</small>
         </div>
-      </div>
+      </button>
       <ul className="station-list">
-        {inRegion.map((s) => (
-          <li key={s.station}>
-            <span className="dot" style={{ background: aqhiColor(s.aqhi) }} />
-            <span className="grow">{tStation(s.station)}</span>
-            <b>{s.aqhi ?? t('aqhi.na')}</b>
-          </li>
-        ))}
+        {inRegion.map((s) => {
+          const clickable = s.latitude != null && s.longitude != null;
+          return (
+            <li key={s.station}>
+              <button
+                type="button"
+                className={`station-row${activeId === s.station ? ' is-active' : ''}`}
+                onClick={() => focus(s)}
+                disabled={!clickable}
+                title={clickable ? t('aqhi.focusHint') : undefined}
+              >
+                <span className="dot" style={{ background: aqhiColor(s.aqhi) }} />
+                <span className="grow">{tStation(s.station)}</span>
+                <b>{s.aqhi ?? t('aqhi.na')}</b>
+              </button>
+            </li>
+          );
+        })}
       </ul>
+      <p className="muted footnote">{t('aqhi.focusHintCard')}</p>
     </Card>
   );
 }
