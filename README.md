@@ -12,7 +12,7 @@ For personal, non-commercial use. Not affiliated with the Government of Hong Kon
 | AQHI (City Dashboard)         | `https://dashboard.data.gov.hk/api/aqhi-individual?format=json`     | Returns `[{ station, aqhi, health_risk, publish_date }]`. Sends `Access-Control-Allow-Origin: *`, so no proxy needed.                                                         |
 | Beach Water Quality (spatial) | `https://cd.epic.epd.gov.hk/EPICDI/json/beach/beachgrading?lang=en` | GeoJSON `FeatureCollection`; properties `district`, `name`, `image`, `grade`, `status`, `desc`, `beachCode`. **Sends no CORS headers**, so a direct browser fetch is blocked. |
 
-### Beach feed: why there is a dev middleware
+### Beach feed: why it is proxied through a server
 
 Two things were tried before settling on the current approach, and both failed:
 
@@ -24,11 +24,15 @@ Two things were tried before settling on the current approach, and both failed:
    request with an HTML `Invalid Access !!!` page, even though an byte-identical     
    Node/curl request returns valid JSON.
 
-The working fix is `epdBeachDevProxy()` in `vite.config.js`: a tiny Vite  
-middleware that fetches the feed **server-side** (the code path proven to work)  
-and re-serves it same-origin at `/epic/beach`. For production, expose the same  
-handler as a Cloudflare Worker / Vercel edge function and set  
-`VITE_BEACH_URL` to its URL.
+The working fix is to fetch the feed **server-side** (the code path proven to
+work) and re-serve it same-origin. There are two small handlers, one per
+environment:
+
+- `epdBeachDevProxy()` in `vite.config.js` - Vite middleware, serves
+  `/epic/beach` during `npm run dev`.
+- `api/beach.js` - a serverless function, serves `/api/beach` in production.
+
+Both issue an identical upstream request. See **Deployment** below.
 
 The hook also enforces a 15 s timeout, so a stalled request can never hang the  
 UI again.
@@ -63,33 +67,60 @@ npm run build    # -> dist/
 npm run preview  # serve the production build locally
 ```
 
-## Deploy to GitHub Pages
+## Deployment
 
-Repo: https://github.com/mattpenny/hkenv — the site will be at
-https://mattpenny.github.io/hkenv/
+**Deployment target: Vercel.** GitHub Pages cannot host this app, because it can
+only serve static files and the beach feed needs a server (see below).
 
-1. `base` in `vite.config.js` must match the repo name. It is set to
-   `/hkenv/`. For Vercel root deploys, set `VITE_BASE=/` instead.
-2. ```bash
-   npm run build
-   npx gh-pages -d dist
-   ```
-   Or let GitHub Actions deploy: add `.github/workflows/deploy.yml` running
-   `npm ci && npm run build` and publishing `dist` to the `gh-pages` branch.
-3. Repo -> Settings -> Pages -> Source: `gh-pages` branch / root.
-4. The site will be live at https://mattpenny.github.io/hkenv/
+### Why a server is required
 
-> **Beaches will not load in production.** The beach feed is CORS-blocked and
-> only works via the dev-server middleware (see above). To fix it for a
-> deployed build, add a serverless function running the same fetch and set
-> `VITE_BEACH_URL` to its URL. Air quality works with no backend at all.
+The EPD beach host sends no `Access-Control-Allow-Origin` header, so the browser
+cannot fetch it directly. The feed is therefore always fetched server-side and
+re-served same-origin:
 
-## Deploy to Vercel
+| Environment | Endpoint | Handler |
+| --- | --- | --- |
+| `npm run dev` | `/epic/beach` | Vite middleware in `vite.config.js` |
+| Production | `/api/beach` | Serverless function in `api/beach.js` |
+
+Both issue an identical upstream request, so behaviour is the same either way.
+Air quality needs no server at all — that endpoint is CORS-enabled.
+
+### Deploy to Vercel
+
+1. Push this repo to GitHub (already done for `mattpenny/hkenv`).
+2. Go to [vercel.com/new](https://vercel.com/new) and import the repo.
+3. Vercel reads `vercel.json`, which sets the framework to Vite and
+   `VITE_BASE=/` (root deploy — the `/hkenv/` subpath is only for Pages).
+   No other configuration is needed; `api/beach.js` is detected automatically.
+4. Deploy. Air quality and beaches both work from the single deployed URL.
+
+Or from the command line:
 
 ```bash
-VITE_BASE=/ npx vercel   # framework preset: Vite; build `npm run build`; output `dist`
+npx vercel          # preview deployment
+npx vercel --prod   # production deployment
 ```
 
+### Optional: GitHub Pages
+
+Pages is static-only, so beaches will not load there. If you want to use it
+anyway (air quality only):
+
+```bash
+npm run build        # with the default base of /hkenv/
+npx gh-pages -d dist
+```
+
+Then **Settings → Pages → Source: `gh-pages` branch / root**. The site appears
+at `https://mattpenny.github.io/hkenv/`. To restore beaches, point
+`VITE_BEACH_URL` at a beach proxy hosted elsewhere.
+
+### Continuous integration
+
+`.github/workflows/build.yml` runs `npm ci --include=optional && npm run build`
+on every push and pull request to `main`. It does **not** deploy — Vercel's own
+GitHub integration handles that. The workflow exists to catch build breakage.
 
 ## Leaflet marker-icon 404
 

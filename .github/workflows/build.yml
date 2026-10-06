@@ -1,0 +1,42 @@
+# CI: verify the app builds on every push and pull request.
+#
+# NOTE ON DEPLOYMENT: this workflow deliberately does NOT deploy.
+# GitHub Pages can only serve static files, so it cannot run the serverless
+# beach function in api/beach.js — a Pages deployment would show air quality
+# but fail to load beaches (the EPD feed is CORS-blocked and needs a server).
+# The app is therefore deployed to Vercel, which serves both the static build
+# and /api/beach from one URL. See README for details.
+#
+# This workflow exists to catch build breakage early, since the Vercel deploy
+# itself is triggered by Vercel's own GitHub integration.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # `--include=optional` guards against the npm bug that skips platform
+      # binaries (rollup/esbuild), which otherwise breaks the build with
+      # "Cannot find module '@rollup/rollup-linux-x64-gnu'".
+      - name: Install dependencies
+        run: npm ci --include=optional
+
+      - name: Build
+        run: npm run build
+        env:
+          # Vercel serves from the domain root, not a subpath.
+          VITE_BASE: '/'

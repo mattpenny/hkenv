@@ -3,36 +3,33 @@ import { BEACH_GRADE_LABELS } from '../utils/colorScale.js';
 
 /**
  * useBeachQuality — fetches the latest Beach Water Quality Grading
- * spatial data (GeoJSON, includes coordinates) from data.gov.hk.
+ * spatial data (GeoJSON, includes coordinates).
  *
- * VERIFY ENDPOINT: The EPD "Beach Water Quality Grading (2023 onwards)"
- * GeoJSON lives at:
- *   https://www.beachwq.gov.hk/en/beachinfo/en_rpt_geojson.geojson
- * If the URL changes, go to data.gov.hk and search
- * "Beach Water Quality Grading" → the spatial GeoJSON/CSV download.
+ * VERIFY ENDPOINT: the EPD "Beach Water Quality Grading" GeoJSON is served by
+ * the EPICDI service at:
+ *   https://cd.epic.epd.gov.hk/EPICDI/json/beach/beachgrading?lang=en
+ * (The older beachwq.gov.hk .geojson path now just redirects here.) If it ever
+ * changes, search data.gov.hk for "Beach Water Quality Grading".
  *
- * CORS NOTE: The EPD host does not send Access-Control-Allow-Origin, and its
- * load balancer also rejects Vite's built-in http-proxy with an HTML
- * "Invalid Access !!!" page. Development therefore routes through the small
- * same-origin middleware in vite.config.js (`epdBeachDevProxy`), which fetches
- * the feed server-side and re-serves it. For production, expose the same
- * handler as an edge function and set VITE_BEACH_URL to its URL.
+ * CORS NOTE — why this never calls EPD directly from the browser:
+ * The EPD host sends no Access-Control-Allow-Origin header, so a direct browser
+ * fetch is blocked. Vite's built-in http-proxy does not help either: EPD's load
+ * balancer answers proxied requests with an HTML "Invalid Access !!!" page.
+ * So the feed is always fetched server-side and re-served same-origin:
+ *   - development      -> /epic/beach  (middleware in vite.config.js)
+ *   - production       -> /api/beach   (serverless function in api/beach.js)
+ * Set VITE_BEACH_URL to override with your own proxy if you host elsewhere.
  */
-
-const DIRECT_URL = 'https://cd.epic.epd.gov.hk/EPICDI/json/beach/beachgrading?lang=en';
 
 /**
- * The EPD host does not send Access-Control-Allow-Origin, so a direct browser
- * fetch is blocked by CORS. In development we route through the same-origin
- * middleware in vite.config.js, which is therefore not subject to CORS.
- *
  * The previous public-CORS-proxy fallback (api.allorigins.win / corsproxy.io)
  * was removed: allorigins now returns 522 and corsproxy.io requires an API
- * key, so both simply hung or failed — the UI sat on "Loading beaches…"
- * forever. A request timeout was added so this can never happen again.
- */
+ * key, so both simply hung. Combined with the absence of a timeout, the UI sat
+ * on "Loading beaches…" forever. A timeout is now enforced. */
 const DEV_URL = '/epic/beach';
-const URL = import.meta.env.VITE_BEACH_URL || (import.meta.env.DEV ? DEV_URL : DIRECT_URL);
+const PROD_URL = '/api/beach';
+const URL =
+  import.meta.env.VITE_BEACH_URL || (import.meta.env.DEV ? DEV_URL : PROD_URL);
 const TIMEOUT_MS = 15000;
 
 /** Extract "Grade 2 - Fair" style labels for display. */
