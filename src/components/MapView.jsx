@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { aqhiColor, beachGradeColor } from '../utils/colorScale.js';
+import { useI18n } from '../i18n/LanguageContext.jsx';
 
 const HK_CENTER = [22.35, 114.15];
 const DEFAULT_ZOOM = 11;
@@ -21,10 +22,12 @@ export default function MapView({
   showBeaches,
   highlight, // { type: 'station'|'beach', id, lat, lng }
 }) {
+  const { t, tRisk, tStation, tDistrict, formatDateTime, lang } = useI18n();
   const containerRef = useRef(null);
   const mapRef = useRef(null);
   const stationLayerRef = useRef(null);
   const beachLayerRef = useRef(null);
+  const legendRef = useRef(null);
   const markerIndexRef = useRef({ station: new Map(), beach: new Map() });
   // Keep the latest highlight in a ref so click handlers can read it.
   const highlightRef = useRef(highlight);
@@ -50,33 +53,6 @@ export default function MapView({
     stationLayerRef.current = L.layerGroup();
     beachLayerRef.current = L.layerGroup();
 
-    L.control
-      .layers(
-        {
-          'Air Quality Stations': stationLayerRef.current,
-          Beaches: beachLayerRef.current,
-        },
-        null,
-        { position: 'topright' }
-      )
-      .addTo(map);
-
-    // Legend in the bottom-right corner.
-    const legend = L.control({ position: 'bottomright' });
-    legend.onAdd = () => {
-      const div = L.DomUtil.create('div', 'map-legend');
-      div.innerHTML = `
-        <h4>Legend</h4>
-        <div><span class="sw" style="background:#2ecc71"></span>Good / Low risk (AQHI 1-3, Grade 1)</div>
-        <div><span class="sw" style="background:#f1c40f"></span>Fair / Moderate (AQHI 4-6, Grade 2)</div>
-        <div><span class="sw" style="background:#e67e22"></span>Poor / High (AQHI 7, Grade 3)</div>
-        <div><span class="sw" style="background:#e74c3c"></span>Very Poor / Very High (AQHI 8-10, Grade 4)</div>
-        <div><span class="sw" style="background:#8e2f22"></span>Serious (AQHI 10+)</div>
-      `;
-      return div;
-    };
-    legend.addTo(map);
-
     // Fix rendering when the container is resized (e.g. window resize).
     const onResize = () => map.invalidateSize();
     window.addEventListener('resize', onResize);
@@ -87,6 +63,81 @@ export default function MapView({
       mapRef.current = null;
     };
   }, []);
+
+  // ---- Layer switcher (labels follow the active language) ----
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !stationLayerRef.current) return;
+    const control = L.control
+      .layers(
+        {
+          [t('map.layerStations')]: stationLayerRef.current,
+          [t('map.layerBeaches')]: beachLayerRef.current,
+        },
+        null,
+        { position: 'topright' }
+      )
+      .addTo(map);
+    return () => control.remove();
+  }, [lang, t]);
+
+  // ---- Collapsible legend (bottom-right) ----
+  // Rebuilt whenever the language changes so the text stays current.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const legend = L.control({ position: 'bottomright' });
+    legend.onAdd = () => {
+      const div = L.DomUtil.create('div', 'map-legend');
+      // Start collapsed so it never covers the map on small screens.
+      div.classList.add('is-collapsed');
+
+      const rows = [
+        ['#2ecc71', 'legend.good', 'legend.goodDetail'],
+        ['#f1c40f', 'legend.fair', 'legend.fairDetail'],
+        ['#e67e22', 'legend.poor', 'legend.poorDetail'],
+        ['#e74c3c', 'legend.veryPoor', 'legend.veryPoorDetail'],
+        ['#8e2f22', 'legend.serious', 'legend.seriousDetail'],
+      ];
+
+      div.innerHTML =
+        `<button type="button" class="map-legend-toggle" aria-expanded="false">` +
+        `<span class="map-legend-title">${t('map.legend')}</span>` +
+        `<span class="map-legend-chevron" aria-hidden="true">▾</span>` +
+        `</button>` +
+        `<div class="map-legend-body">` +
+        rows
+          .map(
+            ([color, key, detailKey]) =>
+              `<div class="map-legend-row"><span class="sw" style="background:${color}"></span>` +
+              `<span><b>${t(key)}</b><br/><small>${t(detailKey)}</small></span></div>`
+          )
+          .join('') +
+        `</div>`;
+
+      // Leaflet would otherwise let clicks fall through to the map and
+      // drag the view — stop that entirely inside the legend.
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.disableScrollPropagation(div);
+
+      const toggle = div.querySelector('.map-legend-toggle');
+      const chevron = div.querySelector('.map-legend-chevron');
+      toggle.addEventListener('click', () => {
+        const collapsed = div.classList.toggle('is-collapsed');
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.title = collapsed ? t('map.legend.show') : t('map.legend.hide');
+        chevron.textContent = collapsed ? '▾' : '▴';
+      });
+      toggle.title = t('map.legend.show');
+
+      return div;
+    };
+    legend.addTo(map);
+    legendRef.current = legend;
+
+    return () => legend.remove();
+  }, [lang, t]);
 
   // ---- Render AQHI station markers ----
   useEffect(() => {
@@ -110,13 +161,14 @@ export default function MapView({
         fillOpacity: 0.9,
       });
       marker.bindPopup(
-        `<strong>${s.station}</strong><br/>AQHI: <b>${s.aqhi ?? 'n/a'}</b><br/>` +
-          `Health risk: <b>${s.category}</b><br/><small>${s.timestamp ?? ''}</small>`
+        `<strong>${tStation(s.station)}</strong><br/>${t('popup.aqhi')}: <b>${s.aqhi ?? t('aqhi.na')}</b><br/>` +
+          `${t('popup.healthRisk')}: <b>${tRisk(s.category)}</b><br/>` +
+          `<small>${formatDateTime(s.timestamp ?? s.fetchedAt)}</small>`
       );
       markerIndexRef.current.station.set(s.station, marker);
       layer.addLayer(marker);
     });
-  }, [stations, showStations]);
+  }, [stations, showStations, lang, t, tRisk, tStation, formatDateTime]);
 
   // ---- Render beach markers ----
   useEffect(() => {
@@ -139,15 +191,17 @@ export default function MapView({
         fillColor: beachGradeColor(b.grade),
         fillOpacity: 0.85,
       });
-      const retrieved = b.fetchedAt?.toLocaleString?.() ?? 'n/a';
+      const retrieved = formatDateTime(b.fetchedAt);
+      // The feed's `desc` is English-only, so prefer the translated grade.
+      const gradeText = b.grade ? t(`beach.grade${b.grade}`) : b.desc || `Grade ${b.grade}`;
       marker.bindPopup(
-        `<strong>${b.name}</strong><br/>${b.district}<br/>${b.desc || `Grade ${b.grade}`}<br/>` +
-          `<small>Data retrieved: ${retrieved}<br/>(feed does not publish a sampling date)</small>`
+        `<strong>${b.name}</strong><br/>${tDistrict(b.district)}<br/>${gradeText}<br/>` +
+          `<small>${t('popup.beachRetrieved', { time: retrieved })}<br/>${t('beach.noSamplingDate')}</small>`
       );
       markerIndexRef.current.beach.set(b.name, marker);
       layer.addLayer(marker);
     });
-  }, [beaches, showBeaches]);
+  }, [beaches, showBeaches, lang, t, tDistrict, formatDateTime]);
 
   // ---- Pan to, open and pulse a recommended location ----
   useEffect(() => {
@@ -183,7 +237,7 @@ export default function MapView({
       ref={containerRef}
       className="map"
       role="application"
-      aria-label="Map of Hong Kong air quality stations and beaches"
+      aria-label={t('map.aria')}
     />
   );
 }

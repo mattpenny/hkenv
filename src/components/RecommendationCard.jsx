@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { nearest } from '../utils/colorScale.js';
+import { useI18n } from '../i18n/LanguageContext.jsx';
 
 /**
  * RecommendationCard — "Should I go out?"
  *
- * Uses the browser's geolocation (or a manual district pick) to find the
+ * Uses the browser's geolocation (or a manual station pick) to find the
  * nearest beach and AQHI station, then gives advice.
  *
  * RAIN NOTE: Neither of the two open datasets this app uses contains rainfall
@@ -14,6 +15,7 @@ import { nearest } from '../utils/colorScale.js';
  * automatic check (e.g. HKO Open Data API 9-day rainfall forecast).
  */
 export default function RecommendationCard({ stations, beaches, onHighlight }) {
+  const { t, tRisk, tStation } = useI18n();
   const [point, setPoint] = useState(null); // { lat, lng, label }
   const [status, setStatus] = useState('idle'); // idle | locating | denied | ready | no-data
   const [recentRain, setRecentRain] = useState(false);
@@ -27,7 +29,7 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
     setStatus('locating');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setPoint({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: 'Your location' });
+        setPoint({ lat: pos.coords.latitude, lng: pos.coords.longitude, label: 'me' });
         setStatus('ready');
       },
       () => setStatus('denied'),
@@ -55,22 +57,21 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
     let verdict, tone;
 
     if (cat === 'Very High' || cat === 'Serious') {
-      verdict = 'Stay indoors — air quality is too poor for outdoor activity.';
+      verdict = t('rec.verdict.stayIndoors');
       tone = 'bad';
     } else if (beachGrade >= 3) {
-      verdict = 'Skip the beach — water quality is not suitable for swimming. Try a park, pool or indoor activity instead.';
+      verdict = t('rec.verdict.skipBeach');
       tone = 'warn';
     } else if ((cat === 'Low' || cat === 'Moderate') && beachGrade <= 2) {
-      verdict = 'Good day to go out — conditions look fine.';
+      verdict = t('rec.verdict.goodDay');
       tone = 'good';
     } else {
-      verdict = 'Conditions are mixed. Check the details below before heading out.';
+      verdict = t('rec.verdict.mixed');
       tone = 'warn';
     }
 
     if (recentRain) {
-      verdict +=
-        ' Heads-up: you reported heavy rain in the last 3 days — runoff can raise bacteria levels, so swimming soon after rain is not advised.';
+      verdict += t('rec.verdict.rain');
       tone = tone === 'good' ? 'warn' : tone;
     }
 
@@ -85,19 +86,24 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
     });
   }
 
+  const pointLabel =
+    point == null ? t('rec.noLocation') : point.label === 'me' ? t('rec.useLocation') : point.label;
+
   return (
     <section className="card">
-      <h3>Should I Go Out?</h3>
+      <div className="card-head">
+        <h3>{t('rec.title')}</h3>
+      </div>
 
       <div className="row">
         <button className="btn" onClick={locate} disabled={status === 'locating'}>
-          {status === 'locating' ? 'Locating…' : '📍 Use my location'}
+          {status === 'locating' ? t('rec.locating') : `📍 ${t('rec.useLocation')}`}
         </button>
-        <span className="muted">{point ? point.label : 'No location selected'}</span>
+        <span className="muted">{pointLabel}</span>
       </div>
 
       <label className="row muted">
-        District / station (manual fallback):
+        {t('rec.manualLabel')}
         <select
           value={point?.label ?? ''}
           onChange={(e) => {
@@ -105,10 +111,10 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
             if (s) useStation(s);
           }}
         >
-          <option value="">Choose a station…</option>
+          <option value="">{t('rec.chooseStation')}</option>
           {stations.map((s) => (
             <option key={s.station} value={s.station}>
-              {s.station}
+              {tStation(s.station)}
             </option>
           ))}
         </select>
@@ -120,32 +126,38 @@ export default function RecommendationCard({ stations, beaches, onHighlight }) {
           checked={recentRain}
           onChange={(e) => setRecentRain(e.target.checked)}
         />
-        It rained heavily in the last 3 days (you tell us — this app has no rainfall feed)
+        {t('rec.rainedLabel')} <span className="muted">({t('rec.rainedNote')})</span>
       </label>
 
       <button className="btn primary" onClick={recommend} disabled={!point}>
-        Recommend
+        {t('rec.recommend')}
       </button>
 
-      {status === 'denied' && (
-        <p className="error">Location unavailable or permission denied — use the manual dropdown.</p>
-      )}
-      {status === 'no-data' && <p className="error">No nearby data found.</p>}
+      {status === 'denied' && <p className="error">{t('rec.denied')}</p>}
+      {status === 'no-data' && <p className="error">{t('rec.noData')}</p>}
 
       {result && (
         <div className={`verdict ${result.tone}`}>
           <p>{result.verdict}</p>
           {result.station && (
             <small>
-              Nearest station: <b>{result.station.station}</b> — AQHI {result.station.aqhi} (
-              {result.station.category}), {result.station.distanceKm?.toFixed(1)} km away
+              {t('rec.nearestStation', {
+                station: tStation(result.station.station),
+                aqhi: result.station.aqhi,
+                category: tRisk(result.station.category),
+                distance: result.station.distanceKm?.toFixed(1),
+              })}
             </small>
           )}
           {result.beach && (
             <small>
               <br />
-              Nearest beach: <b>{result.beach.name}</b> — {result.beach.desc},{' '}
-              {result.beach.distanceKm?.toFixed(1)} km away
+              {t('rec.nearestBeach', {
+                beach: result.beach.name,
+                // The feed's `desc` is English-only; prefer our translated grade.
+                desc: result.beach.grade ? t(`beach.grade${result.beach.grade}`) : result.beach.desc,
+                distance: result.beach.distanceKm?.toFixed(1),
+              })}
             </small>
           )}
         </div>

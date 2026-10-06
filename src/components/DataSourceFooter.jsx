@@ -1,19 +1,14 @@
+import { useI18n } from '../i18n/LanguageContext.jsx';
+
 /** Mandatory data attribution and disclaimer. */
 export default function DataSourceFooter() {
+  const { t } = useI18n();
+
   return (
     <footer className="footer">
-      <p>
-        This app uses open data from data.gov.hk, provided by the Hong Kong Special
-        Administrative Region Government and the Environmental Protection Department.
-      </p>
-      <p>
-        The data is provided on an &ldquo;as is&rdquo; basis. The Government makes no warranty as
-        to its accuracy or completeness.
-      </p>
-      <p>
-        This app is for reference only and is not affiliated with the Government of Hong Kong.
-        For personal, non-commercial use.
-      </p>
+      <p>{t('footer.attribution')}</p>
+      <p>{t('footer.disclaimer')}</p>
+      <p>{t('footer.reference')}</p>
       <p className="links">
         <a href="https://data.gov.hk" target="_blank" rel="noopener noreferrer">
           data.gov.hk
@@ -24,7 +19,7 @@ export default function DataSourceFooter() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          EPD Air Quality Health Index
+          {t('footer.aqhiLink')}
         </a>{' '}
         ·{' '}
         <a
@@ -32,13 +27,13 @@ export default function DataSourceFooter() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          EPD Beach Water Quality
+          {t('footer.beachLink')}
         </a>{' '}
-        · Map tiles ©{' '}
+        · {t('footer.mapTiles')}{' '}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
           OpenStreetMap
         </a>{' '}
-        contributors
+        {t('footer.contributors')}
       </p>
     </footer>
   );
