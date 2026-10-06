@@ -102,19 +102,27 @@ npx vercel          # preview deployment
 npx vercel --prod   # production deployment
 ```
 
-### Optional: GitHub Pages
+### GitHub Pages is not used
 
-Pages is static-only, so beaches will not load there. If you want to use it
-anyway (air quality only):
+GitHub Pages was tried and then **deliberately disabled**. Two independent
+blockers make it unsuitable, and only one of them is fixable:
 
-```bash
-npm run build        # with the default base of /hkenv/
-npx gh-pages -d dist
-```
+1. **No build step by default.** Pointing Pages at the `main` branch root
+   publishes the raw source tree. The live HTML still referenced
+   `/src/main.jsx` (uncompiled JSX, which browsers cannot run) while
+   `/assets/index-*.js` returned 404, so the page rendered completely blank.
+   This one *is* fixable, by publishing a built `dist/` to a `gh-pages`
+   branch instead.
+2. **No server.** Even with a correct build, Pages cannot run `api/beach.js`,
+   so beaches would still fail to load. Fixing this needs a *second* service
+   (a Cloudflare Worker, or the function redeployed elsewhere) plus
+   `VITE_BEACH_URL` pointing at it.
 
-Then **Settings → Pages → Source: `gh-pages` branch / root**. The site appears
-at `https://mattpenny.github.io/hkenv/`. To restore beaches, point
-`VITE_BEACH_URL` at a beach proxy hosted elsewhere.
+Vercel solves both in one service, so Pages was removed to avoid maintaining
+two deploy pipelines for a strictly worse result.
+
+If you ever do want the `github.io` URL, you must handle **both** points above —
+publishing a built `dist/` alone will still leave beaches broken.
 
 ### Continuous integration
 
