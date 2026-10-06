@@ -730,24 +730,39 @@ select {
 /* Selected point with no published reading: hollow, so it reads as "absent". */
 .poll-marker-na { stroke: #b7cbd6; }
 
-/* Tooltip readout. Sits below the plot in normal flow (not absolutely
-   positioned), so it can never overflow the dialog or cover the line. */
-.poll-tip-slot { margin-top: 6px; min-height: 22px; }
-.poll-tip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--muted);
-  transition: color 120ms ease;
+/* Tooltip bubble drawn inside the plot, beside the selected point, so the eye
+   never leaves the line. Sized and positioned in viewBox units in the JSX. */
+.poll-tipbox-bg {
+  fill: rgba(16, 40, 54, 0.92);
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-width: 1;
 }
-.poll-tip.is-on { color: var(--ink); }
-.poll-tip-time { font-weight: 600; }
-.poll-tip-val { display: inline-flex; align-items: center; gap: 4px; }
-.poll-tip-idle { opacity: 0.75; }
-@media (prefers-reduced-motion: reduce) {
-  .poll-tip { transition: none; }
+.poll-tipbox-time {
+  fill: #cfe3ee;
+  font-size: 10px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.poll-tipbox-val {
+  fill: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+}
+/* "Tap the chart" hint, in the caption until a tooltip appears. In-flow inside
+   the caption row, so toggling it never shifts the chart. */
+.poll-touch-hint {
+  margin-left: 10px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 620px) {
+  /* No room for the hint and the latest value side by side on a phone. */
+  .poll-touch-hint { display: none; }
 }
 
 /* Table view */

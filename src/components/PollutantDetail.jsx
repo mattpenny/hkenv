@@ -133,17 +133,28 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false, t }
   const ticksY = useMemo(() => axisTicks(max), [max]);
 
   /**
-   * Time ticks. Prefer fixed clock hours (00:00 / 06:00 / 12:00 / 18:00) so the
-   * axis reads as real times rather than "every Nth point"; fall back to evenly
-   * spaced samples when the data does not happen to land on those hours.
+   * Time ticks, every 2 hours.
+   *
+   * The feed is one reading per hour, so a 2-hour step yields ~12 labels across
+   * the day — enough to read the shape without the labels colliding. We look for
+   * the exact clock hours (00:00, 02:00, … 22:00) rather than taking every 2nd
+   * index, so the labels stay truthful even if a reading is missing from the
+   * feed and the rows are not perfectly hourly. If the feed does not contain
+   * those hours at all, fall back to an even 2-index stride.
    */
   const ticks = useMemo(() => {
     if (!detail || n < 2) return [];
-    const byHour = [0, 6, 12, 18]
-      .map((h) => rows.findIndex((r) => r.time && r.time.getHours() === h))
-      .filter((i) => i >= 0);
-    if (byHour.length >= 2) return byHour;
-    return [0, Math.floor((n - 1) / 2), n - 1];
+    const byClock = [];
+    for (let h = 0; h < 24; h += 2) {
+      const i = rows.findIndex((r) => r.time && r.time.getHours() === h);
+      if (i >= 0) byClock.push(i);
+    }
+    if (byClock.length >= 4) return byClock;
+    // Fallback: every second sample, always including the last point.
+    const stride = [];
+    for (let i = 0; i < n; i += 2) stride.push(i);
+    if (stride[stride.length - 1] !== n - 1) stride.push(n - 1);
+    return stride;
   }, [detail, rows, n]);
 
   const clock = (d) =>
@@ -243,6 +254,12 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false, t }
       <figcaption>
         <span className="poll-swatch" style={{ background: color }} aria-hidden="true" />
         <span className="poll-spark-label">{label}</span>
+        {/* Hint that the plot is interactive. Lives in the caption row (and
+            hides itself once a tooltip is showing) so appearing/disappearing
+            never shifts the chart below it. */}
+        {detail && !showTip && (
+          <span className="poll-touch-hint">{t('poll.touchHint')}</span>
+        )}
         <span className="poll-spark-latest">
           {hasData ? `${fmt(values[lastIdx])} ${unit}` : '—'}
         </span>
@@ -278,8 +295,12 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false, t }
                 y2={gy}
                 className={v === 0 ? 'poll-axis' : 'poll-grid'}
               />
-              <text x={PAD.l - 5} y={gy + 3} className="poll-axis-text" textAnchor="end">
-                {fmtAxis(v)}
+              <text
+                x={PAD.l - 5}
+                y={gy + 3}
+                className="poll-axis-text poll-axis-y"
+                textAnchor="end"
+              >                {fmtAxis(v)}
               </text>
             </g>
           );
@@ -347,6 +368,72 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false, t }
             would swallow clicks aimed at the chips and footnotes beneath the
             chart, which Playwright flags as "intercepts pointer events". */}
 
+        {/* Tooltip, drawn inside the plot next to the selected point rather than
+            below the chart, so the eye never has to leave the line. Rendered as
+            SVG (not HTML) so it scales with the figure and can be positioned in
+            the same viewBox coordinates as the marker it describes.
+
+            `textLength`-style metrics are unavailable in SVG, so the bubble is
+            sized from a character-count estimate; that estimate only needs to be
+            generous, never exact, because the bubble is anchored away from the
+            point and clamped to the plot. */}
+        {showTip && (() => {
+          const valText = activeValue == null ? t('poll.na') : `${fmt(activeValue)} ${unit}`;
+          const timeText = clock(rows[active]?.time);
+
+          /**
+           * Estimate text width in viewBox units.
+           *
+           * SVG has no measuring API, so we approximate: digits/latin at the
+           * value font are ~7px, and CJK glyphs are full-width (~13px). The old
+           * single 6.2px factor was fine for the latin time but let the CJK
+           * unit ("微克／立方米") overflow the bubble, so width is now summed per
+           * character class. Being slightly generous is safe — the bubble is
+           * clamped to the plot either way.
+           */
+          const textW = (s, latinPx, cjkPx) =>
+            [...s].reduce((w, ch) => w + (/[\u2E80-\u9FFF\uFF00-\uFFEF]/.test(ch) ? cjkPx : latinPx), 0);
+
+          const padX = 9;
+          const timeW = textW(timeText, 6.5, 11);
+          const valW = textW(valText, 7.6, 13);
+          const boxW = Math.max(timeW, valW) + padX * 2;
+          const boxH = 36;
+          const gap = 12;
+
+          // Prefer the right of the point; flip left when it would overflow.
+          const pointX = x(active);
+          const pointY = activeValue == null ? PAD.t + plotH : y(activeValue);
+          const rightEdge = W - PAD.r;
+          const leftEdge = PAD.l;
+          const placeLeft = pointX + gap + boxW > rightEdge;
+          const rawX = placeLeft ? pointX - gap - boxW : pointX + gap;
+          const boxX = Math.min(Math.max(rawX, leftEdge), rightEdge - boxW);
+
+          // Vertically centre on the point, kept inside the plot.
+          const rawY = pointY - boxH / 2;
+          const boxY = Math.min(Math.max(rawY, PAD.t), PAD.t + plotH - boxH);
+
+          return (
+            <g className="poll-tipbox" pointerEvents="none">
+              <rect
+                x={boxX}
+                y={boxY}
+                width={boxW}
+                height={boxH}
+                rx={6}
+                className="poll-tipbox-bg"
+              />
+              <text x={boxX + padX} y={boxY + 15} className="poll-tipbox-time">
+                {timeText}
+              </text>
+              <text x={boxX + padX} y={boxY + 29} className="poll-tipbox-val">
+                {valText}
+              </text>
+            </g>
+          );
+        })()}
+
         {/* Time axis. */}
         {detail
           ? ticks.map((i) => (
@@ -372,31 +459,17 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false, t }
             )}
       </svg>
 
-      {/* Tooltip. Rendered in HTML (not SVG) so it inherits normal font metrics
-          and can be positioned as a percentage of the figure. `left` is tied to
-          the same index the marker uses, so the two never disagree. */}
+      {/* The readout now lives inside the plot (above). Screen readers cannot
+          see SVG text change reliably, so the same value is mirrored into a
+          visually-hidden live region — the visual tooltip needs no accessible
+          name, and this keeps the announcement working. */}
       {detail && (
-        <div className="poll-tip-slot" aria-live="polite">
-          <output className={`poll-tip${showTip ? ' is-on' : ''}`}>
-            {showTip ? (
-              <>
-                <span className="poll-tip-time">{clock(rows[active]?.time)}</span>
-                <span className="poll-tip-val">
-                  <span className="poll-swatch" style={{ background: color }} aria-hidden="true" />
-                  {activeValue == null ? (
-                    <span className="poll-na" title={t('poll.naHint')}>
-                      {t('poll.na')}
-                    </span>
-                  ) : (
-                    `${fmt(activeValue)} ${unit}`
-                  )}
-                </span>
-              </>
-            ) : (
-              // Reserve height so the layout does not jump when the tip appears.
-              <span className="poll-tip-idle">{t('poll.touchHint')}</span>
-            )}
-          </output>
+        <div className="sr-only" aria-live="polite">
+          {showTip
+            ? `${clock(rows[active]?.time)} ${
+                activeValue == null ? t('poll.na') : `${fmt(activeValue)} ${unit}`
+              }`
+            : ''}
         </div>
       )}
     </figure>

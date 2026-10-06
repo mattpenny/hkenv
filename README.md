@@ -182,10 +182,11 @@ Two Playwright suites drive this server and assert real behaviour:
 
 ```bash
 BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/modal-check.mjs        # 41 assertions
-BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/chart-table-check.mjs  # 32 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/chart-table-check.mjs  # 40 assertions
 ```
 
-`chart-table-check.mjs` covers the axis ticks, pointer/keyboard/touch interaction
+`chart-table-check.mjs` (40 assertions) covers the axis ticks, the on-chart tooltip position
+and its edge-clamping, pointer/keyboard/touch interaction
 on the chart, the Escape precedence rule, and the table's column geometry.
 Screenshots land in `.workbuddy-ai/tools/shots/`.
 
@@ -203,8 +204,11 @@ Screenshots land in `.workbuddy-ai/tools/shots/`.
   pollutant's latest reading.
 - The chart is **interactive**. Tap or click (hover on a desktop mouse) anywhere
   on the plot to snap to that hour: a dashed vertical guide and a marker appear,
-  and a readout below the chart shows the time and the concentration. The readout
-  doubles as the screen-reader announcement (`aria-live="polite"`).
+  and a **tooltip bubble appears on the chart itself**, beside the point, showing
+  the time and concentration. The bubble flips to the other side of the point and
+  clamps to the plot so it never overflows the chart.
+  - The same readout is mirrored into a visually-hidden live region
+    (`aria-live="polite"`), because SVG text changes are not reliably announced.
   - Keyboard: <kbd>Tab</kbd> to the chart, then <kbd>←</kbd>/<kbd>→</kbd> to step
     hour by hour. <kbd>Esc</kbd> clears the readout **without** closing the
     dialog; a second <kbd>Esc</kbd> closes the dialog.
@@ -212,6 +216,8 @@ Screenshots land in `.workbuddy-ai/tools/shots/`.
     marker drops to the baseline so the tap is still acknowledged.
 - The Y-axis shows **several labelled ticks** (a "nice" 1/2/2.5/5 × 10ⁿ step,
   0–5 labels as space allows) rather than only `0` and the maximum.
+- The X-axis labels **every 2 hours** (12 labels across the day), picked by clock
+  hour so a missing feed reading never shifts them.
 - The **表格** view keeps the five numeric columns close together; the two
   concentration columns put their unit (`µg/m³`) on a second header line so the
   header stays two rows tall instead of one very wide one.
