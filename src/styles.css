@@ -699,6 +699,20 @@ select {
   margin-right: 2px;
 }
 .poll-spark-svg { display: block; width: 100%; height: 96px; }
+/* The chart takes pointer input in the detail view, so show a cue cursor.
+   `pointer-events: all` makes the whole SVG box hit-testable — SVG only
+   responds on painted pixels by default, so tapping empty plot space would
+   otherwise do nothing. `touch-action: pan-y` keeps vertical page scrolling
+   working while we handle horizontal drags ourselves. */
+.poll-spark.is-detail .poll-spark-svg {
+  cursor: crosshair;
+  touch-action: pan-y;
+  pointer-events: all;
+}
+.poll-spark.is-detail .poll-spark-svg:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 .poll-axis { stroke: #cfe3ee; stroke-width: 1; }
 .poll-grid { stroke: #e8f2f8; stroke-width: 1; stroke-dasharray: 3 3; }
 .poll-axis-text {
@@ -706,18 +720,53 @@ select {
   font-size: 9px;
   font-family: inherit;
 }
+/* Vertical guide under the selected point. */
+.poll-cursor-line {
+  stroke: #9fc3d6;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  vector-effect: non-scaling-stroke;
+}
+/* Selected point with no published reading: hollow, so it reads as "absent". */
+.poll-marker-na { stroke: #b7cbd6; }
+
+/* Tooltip readout. Sits below the plot in normal flow (not absolutely
+   positioned), so it can never overflow the dialog or cover the line. */
+.poll-tip-slot { margin-top: 6px; min-height: 22px; }
+.poll-tip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  transition: color 120ms ease;
+}
+.poll-tip.is-on { color: var(--ink); }
+.poll-tip-time { font-weight: 600; }
+.poll-tip-val { display: inline-flex; align-items: center; gap: 4px; }
+.poll-tip-idle { opacity: 0.75; }
+@media (prefers-reduced-motion: reduce) {
+  .poll-tip { transition: none; }
+}
 
 /* Table view */
 .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .poll-table {
+  /* `fixed` layout is what actually constrains column widths: with `auto`, a
+     cell's `max-width` is ignored and the long pollutant names stretch the
+     first column to ~600px, which is exactly the "too wide" problem. Fixed
+     layout honours the percentage widths set below. */
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.82rem;
   font-variant-numeric: tabular-nums;
 }
 .poll-table th,
 .poll-table td {
-  padding: 7px 8px;
+  padding: 5px 4px;
   text-align: right;
   border-bottom: 1px solid #eaf4fa;
   white-space: nowrap;
@@ -726,20 +775,58 @@ select {
   color: var(--primary-dark);
   font-size: 0.72rem;
   font-weight: 600;
+  line-height: 1.2;
   text-align: right;
+  /* Headers wrap to TWO rows (label, then unit) rather than widening the
+     column. `nowrap` on the label would make "24-hr avg" one long line and
+     push the numeric columns apart. */
+  white-space: normal;
+  vertical-align: bottom;
   border-bottom: 2px solid #e3f1f8;
   position: sticky;
   top: 0;
   background: var(--card);
+}
+/* Unit under the header label — a smaller, lighter second row. */
+.poll-th-unit {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .poll-table thead th:first-child,
 .poll-table tbody th { text-align: left; }
 .poll-table tbody th {
   font-weight: 500;
   color: var(--ink);
+  /* The pollutant name is the only column allowed to wrap; it is the one with
+     genuinely long content ("可吸入懸浮粒子（PM10）"). */
+  white-space: normal;
 }
+/* Numeric cells stay on one line. */
+.poll-table tbody td { white-space: nowrap; }
+
+/* Column widths, honoured because the table uses `table-layout: fixed`.
+   The name column gets the most room; the five numeric columns share the rest
+   evenly — that evenness is what keeps them visually close together. */
+.poll-table thead th:first-child,
+.poll-table tbody th { width: 34%; }
+.poll-table thead th:not(:first-child),
+.poll-table tbody td { width: 13.2%; }
+
 /* A missing reading is an em dash, never a 0 — styled to look absent. */
 .poll-na { color: #b7cbd6; cursor: help; }
+
+/* On a very narrow screen six columns cannot all be comfortable. Cap the
+   deficit by trimming padding rather than letting the headers stack up. */
+@media (max-width: 520px) {
+  .poll-table { font-size: 0.76rem; }
+  .poll-table th,
+  .poll-table td { padding: 5px 3px; }
+  .poll-table thead th { font-size: 0.66rem; }
+  .poll-th-unit { font-size: 0.56rem; }
+}
 
 /* Stacked share bar */
 .poll-composition { margin-top: 14px; }

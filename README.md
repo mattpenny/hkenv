@@ -170,13 +170,24 @@ stays empty — that is the environment, not the code.
 To test the panel regardless of network policy, run the fixture-backed server:
 
 ```bash
-npm run dev:mock   # http://localhost:5174/hkenv/
+npm run dev:mock   # http://localhost:5173/hkenv/
 ```
 
 It boots Vite exactly as `npm run dev` does, but sets `AQHI_FIXTURES`, which
 makes `aqhiDevProxy()` in `vite.config.js` serve `/epd/aqhi` from XML recorded
 from the live feed (`tools/fixtures/`). Everything else — live
 AQHI values, rainfall, map tiles — is unchanged.
+
+Two Playwright suites drive this server and assert real behaviour:
+
+```bash
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/modal-check.mjs        # 41 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/chart-table-check.mjs  # 32 assertions
+```
+
+`chart-table-check.mjs` covers the axis ticks, pointer/keyboard/touch interaction
+on the chart, the Escape precedence rule, and the table's column geometry.
+Screenshots land in `.workbuddy-ai/tools/shots/`.
 
 **What to look for**
 
@@ -190,6 +201,20 @@ AQHI values, rainfall, map tiles — is unchanged.
   chips (SO2 / NO2 / O3 / PM10 / PM2.5) selects which *single* pollutant is
   charted, so only one chart is ever on screen. Each chip also shows that
   pollutant's latest reading.
+- The chart is **interactive**. Tap or click (hover on a desktop mouse) anywhere
+  on the plot to snap to that hour: a dashed vertical guide and a marker appear,
+  and a readout below the chart shows the time and the concentration. The readout
+  doubles as the screen-reader announcement (`aria-live="polite"`).
+  - Keyboard: <kbd>Tab</kbd> to the chart, then <kbd>←</kbd>/<kbd>→</kbd> to step
+    hour by hour. <kbd>Esc</kbd> clears the readout **without** closing the
+    dialog; a second <kbd>Esc</kbd> closes the dialog.
+  - A reading that was never published shows `—` rather than a value, and the
+    marker drops to the baseline so the tap is still acknowledged.
+- The Y-axis shows **several labelled ticks** (a "nice" 1/2/2.5/5 × 10ⁿ step,
+  0–5 labels as space allows) rather than only `0` and the maximum.
+- The **表格** view keeps the five numeric columns close together; the two
+  concentration columns put their unit (`µg/m³`) on a second header line so the
+  header stays two rows tall instead of one very wide one.
 - Station picker: 18 stations, each tagged **一般** (General) or **路邊**
   (Roadside), 15 General + 3 Roadside.
 - The composition bar showing each pollutant's share of the added health risk.

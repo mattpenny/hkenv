@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/LanguageContext.jsx';
 import { RAW_POLLUTANTS, MOVING_AVERAGE_HOURS } from '../utils/aqhiPollutants.js';
 
@@ -46,6 +46,37 @@ function axisMax(values) {
   return Math.ceil(max / step) * step;
 }
 
+/**
+ * Y-axis tick values for a rounded maximum.
+ *
+ * The old chart labelled only `0` and the rounded max, so a series that sat
+ * between gridlines was hard to read. This picks a "nice" step (1/2/2.5/5 × 10ⁿ)
+ * so we land on roughly `targetTicks` intervals, and caps the count so a tall
+ * axis does not turn into a wall of numbers on a phone. The result is always
+ * evenly spaced and always includes 0, so the labels line up with the
+ * gridlines drawn from the same fractions.
+ */
+function axisTicks(max, targetTicks = 5) {
+  if (!(max > 0)) return [0];
+  // Aim for `targetTicks` gaps, then snap the step up to a friendly number.
+  const rough = max / targetTicks;
+  const mag = 10 ** Math.floor(Math.log10(rough));
+  const norm = rough / mag;
+  const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
+  const step = nice * mag;
+  const out = [];
+  for (let v = 0; v <= max + step / 2 && out.length < 12; v += step) {
+    // Trim floating-point dust from 2.5-based steps (0.30000000000000004).
+    out.push(Math.round(v * 1000) / 1000);
+  }
+  return out;
+}
+
+/** Axis labels are integers when the step is whole, else one decimal. */
+function fmtAxis(v) {
+  return Number.isInteger(v) ? String(v) : v.toFixed(1);
+}
+
 function fmt(v, digits = 1) {
   if (v == null) return null;
   return Number(v).toFixed(digits);
@@ -59,7 +90,7 @@ function fmt(v, digits = 1) {
  * compact form is used nowhere now that only one chart shows at a time, but the
  * flag keeps the two modes explicit rather than hard-coding one.
  */
-function Sparkline({ channel, rows, label, unit, latestText, detail = false }) {
+function Sparkline({ channel, rows, label, unit, latestText, detail = false, t }) {
   const W = 640;
   const H = detail ? 210 : 96;
   const PAD = detail
@@ -67,6 +98,10 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false }) {
     : { l: 34, r: 8, t: 10, b: 18 };
   const plotW = W - PAD.l - PAD.r;
   const plotH = H - PAD.t - PAD.b;
+
+  const svgRef = useRef(null);
+  // Index of the point under the pointer / last tapped. `null` hides the tooltip.
+  const [active, setActive] = useState(null);
 
   const values = rows.map((r) => r[channel]);
   const max = axisMax(values);
@@ -93,8 +128,9 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false }) {
   const hasData = lastIdx >= 0;
   const color = SERIES_COLOR[channel];
 
-  // Gridlines: quarters when there is room for them, otherwise just halves.
-  const gridFractions = detail ? [0, 0.25, 0.5, 0.75, 1] : [0, 0.5, 1];
+  // Y gridlines + labels come from the same tick list, so a label always sits
+  // exactly on its line.
+  const ticksY = useMemo(() => axisTicks(max), [max]);
 
   /**
    * Time ticks. Prefer fixed clock hours (00:00 / 06:00 / 12:00 / 18:00) so the
@@ -110,6 +146,98 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false }) {
     return [0, Math.floor((n - 1) / 2), n - 1];
   }, [detail, rows, n]);
 
+  const clock = (d) =>
+    d ? `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}` : '';
+
+  /**
+   * Map a viewport x-coordinate to the nearest data index.
+   *
+   * The SVG is scaled by `viewBox` with `preserveAspectRatio="none"`, so the
+   * on-screen rect is NOT square with the viewBox — we must convert through the
+   * bounding rect rather than assume 1 unit = 1 px. Clamping inside the plot
+   * means a drag that leaves the chart keeps the last valid selection instead of
+   * throwing it away.
+   */
+  const indexFromClientX = useCallback(
+    (clientX) => {
+      const svg = svgRef.current;
+      if (!svg || n < 1) return null;
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) return null;
+      const vx = ((clientX - rect.left) / rect.width) * W;
+      const frac = (vx - PAD.l) / plotW;
+      const i = Math.round(frac * (n - 1));
+      return Math.min(n - 1, Math.max(0, i));
+    },
+    [n, plotW]
+  );
+
+  // While dragging (mouse) or after a tap (touch) the tooltip follows the finger.
+  const dragging = useRef(false);
+
+  const handlePointerDown = (e) => {
+    if (!detail) return;
+    const i = indexFromClientX(e.clientX);
+    if (i == null) return;
+    dragging.current = true;
+    setActive(i);
+    // Capture so a drag that leaves the SVG still reports positions.
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!detail) return;
+    // Mouse hovers (no button held) and captured drags both update.
+    if (e.pointerType !== 'mouse' && !dragging.current) return;
+    const i = indexFromClientX(e.clientX);
+    if (i != null) setActive(i);
+  };
+
+  const handlePointerUp = (e) => {
+    dragging.current = false;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerLeave = (e) => {
+    // A touch tap should persist (there is no hover to follow); a mouse leaving
+    // the plot should dismiss the tooltip.
+    if (e.pointerType === 'mouse') setActive(null);
+  };
+
+  // Keyboard access: arrows step through the series, Escape dismisses.
+  const handleKeyDown = (e) => {
+    if (!detail) return;
+    if (e.key === 'Escape') {
+      // Dismiss the tooltip only. Without stopPropagation the dialog's own
+      // Escape handler also fires and closes the whole modal — so a user who
+      // just wanted the readout gone would lose their place entirely.
+      if (active != null) {
+        e.stopPropagation();
+        setActive(null);
+      }
+      return;
+    }
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    // Stepping with nothing selected starts from the first reading, so ArrowRight
+    // walks forward through the day. (Starting at `lastIdx` would make the first
+    // ArrowRight a no-op, which reads as a broken key.)
+    const step = e.key === 'ArrowLeft' ? -1 : 1;
+    setActive((prev) => {
+      const base = prev == null ? (step > 0 ? 0 : n - 1) : prev;
+      return Math.min(n - 1, Math.max(0, base + step));
+    });
+  };
+
+  // A selection that points at a gap (or a chart that just changed pollutant)
+  // must not leave a phantom tooltip behind.
+  useEffect(() => {
+    setActive(null);
+  }, [channel]);
+
+  const activeValue = active == null ? null : values[active];
+  const showTip = detail && active != null;
+
   return (
     <figure className={`poll-spark${detail ? ' is-detail' : ''}`}>
       <figcaption>
@@ -120,30 +248,53 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false }) {
         </span>
       </figcaption>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className="poll-spark-svg"
-        role="img"
+        role={detail ? 'application' : 'img'}
         aria-label={`${label}: ${latestText}`}
         preserveAspectRatio="none"
+        tabIndex={detail ? 0 : undefined}
+        // Tells the enclosing dialog that Escape here is ours to consume — but
+        // only while a tooltip is showing; otherwise Escape should close the
+        // dialog as usual. `active` is the single source of truth for that.
+        data-esc-local={detail && active != null ? '' : undefined}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
+        onKeyDown={handleKeyDown}
       >
-        {/* Horizontal gridlines at 0, half and full scale. */}
-        {gridFractions.map((f) => (
+        {/* Horizontal gridlines and their value labels, one per tick. */}
+        {ticksY.map((v) => {
+          const gy = PAD.t + plotH - (v / max) * plotH;
+          return (
+            <g key={v}>
+              <line
+                x1={PAD.l}
+                x2={W - PAD.r}
+                y1={gy}
+                y2={gy}
+                className={v === 0 ? 'poll-axis' : 'poll-grid'}
+              />
+              <text x={PAD.l - 5} y={gy + 3} className="poll-axis-text" textAnchor="end">
+                {fmtAxis(v)}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Vertical guide for the selected point. */}
+        {showTip && (
           <line
-            key={f}
-            x1={PAD.l}
-            x2={W - PAD.r}
-            y1={PAD.t + plotH - f * plotH}
-            y2={PAD.t + plotH - f * plotH}
-            className={f === 0 ? 'poll-axis' : 'poll-grid'}
+            x1={x(active)}
+            x2={x(active)}
+            y1={PAD.t}
+            y2={PAD.t + plotH}
+            className="poll-cursor-line"
           />
-        ))}
-        {/* Axis labels: 0 and the rounded maximum. */}
-        <text x={PAD.l - 5} y={PAD.t + plotH + 3} className="poll-axis-text" textAnchor="end">
-          0
-        </text>
-        <text x={PAD.l - 5} y={PAD.t + 6} className="poll-axis-text" textAnchor="end">
-          {max}
-        </text>
+        )}
 
         {segments.map((seg, si) =>
           seg.length === 1 ? (
@@ -163,8 +314,8 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false }) {
           )
         )}
 
-        {/* Emphasise the most recent reading. */}
-        {hasData && (
+        {/* Emphasise the most recent reading, unless it is the selected one. */}
+        {hasData && active !== lastIdx && (
           <circle
             cx={x(lastIdx)}
             cy={y(values[lastIdx])}
@@ -176,6 +327,26 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false }) {
           />
         )}
 
+        {/* Marker for the selected point. A missing reading shows a hollow dot
+            pinned to the baseline so the tap is still acknowledged. */}
+        {showTip && (
+          <circle
+            cx={x(active)}
+            cy={activeValue == null ? PAD.t + plotH : y(activeValue)}
+            r={4}
+            stroke="#fff"
+            strokeWidth="1.5"
+            vectorEffect="non-scaling-stroke"
+            fill={activeValue == null ? '#fff' : color}
+            className={activeValue == null ? 'poll-marker-na' : undefined}
+          />
+        )}
+
+        {/* No transparent hit-rect here: the <svg> element itself receives the
+            pointer events (see onPointerDown/Move on the root). An overlay rect
+            would swallow clicks aimed at the chips and footnotes beneath the
+            chart, which Playwright flags as "intercepts pointer events". */}
+
         {/* Time axis. */}
         {detail
           ? ticks.map((i) => (
@@ -186,26 +357,48 @@ function Sparkline({ channel, rows, label, unit, latestText, detail = false }) {
                 className="poll-axis-text"
                 textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}
               >
-                {rows[i]?.time
-                  ? rows[i].time.getHours().toString().padStart(2, '0') + ':00'
-                  : ''}
+                {clock(rows[i]?.time)}
               </text>
             ))
           : n > 1 && (
               <>
                 <text x={PAD.l} y={H - 5} className="poll-axis-text" textAnchor="start">
-                  {rows[0].time
-                    ? rows[0].time.getHours().toString().padStart(2, '0') + ':00'
-                    : ''}
+                  {clock(rows[0].time)}
                 </text>
                 <text x={W - PAD.r} y={H - 5} className="poll-axis-text" textAnchor="end">
-                  {rows[n - 1].time
-                    ? rows[n - 1].time.getHours().toString().padStart(2, '0') + ':00'
-                    : ''}
+                  {clock(rows[n - 1].time)}
                 </text>
               </>
             )}
       </svg>
+
+      {/* Tooltip. Rendered in HTML (not SVG) so it inherits normal font metrics
+          and can be positioned as a percentage of the figure. `left` is tied to
+          the same index the marker uses, so the two never disagree. */}
+      {detail && (
+        <div className="poll-tip-slot" aria-live="polite">
+          <output className={`poll-tip${showTip ? ' is-on' : ''}`}>
+            {showTip ? (
+              <>
+                <span className="poll-tip-time">{clock(rows[active]?.time)}</span>
+                <span className="poll-tip-val">
+                  <span className="poll-swatch" style={{ background: color }} aria-hidden="true" />
+                  {activeValue == null ? (
+                    <span className="poll-na" title={t('poll.naHint')}>
+                      {t('poll.na')}
+                    </span>
+                  ) : (
+                    `${fmt(activeValue)} ${unit}`
+                  )}
+                </span>
+              </>
+            ) : (
+              // Reserve height so the layout does not jump when the tip appears.
+              <span className="poll-tip-idle">{t('poll.touchHint')}</span>
+            )}
+          </output>
+        </div>
+      )}
     </figure>
   );
 }
@@ -396,6 +589,7 @@ export default function PollutantDetail({
             unit={t('poll.unit')}
             latestText={`${t('poll.range.hours')}, ${t(`poll.legend.${channel}`)}`}
             detail
+            t={t}
           />
         </>
       ) : (
@@ -405,8 +599,14 @@ export default function PollutantDetail({
             <thead>
               <tr>
                 <th scope="col">{t('poll.colPollutant')}</th>
-                <th scope="col">{t('poll.colLatest', { unit: t('poll.unit') })}</th>
-                <th scope="col">{t('poll.colAvg', { unit: t('poll.unit') })}</th>
+                <th scope="col">
+                  {t('poll.colLatest')}
+                  <span className="poll-th-unit">{t('poll.unit')}</span>
+                </th>
+                <th scope="col">
+                  {t('poll.colAvg')}
+                  <span className="poll-th-unit">{t('poll.unit')}</span>
+                </th>
                 <th scope="col">{t('poll.colMin')}</th>
                 <th scope="col">{t('poll.colMax')}</th>
                 <th scope="col">{t('poll.colAvg24')}</th>

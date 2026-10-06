@@ -64,6 +64,10 @@ export default function PollutantModal({ open, onClose, children }) {
 
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
+        // Nested widgets (e.g. the pollutant chart) may want Escape to dismiss
+        // only their own transient UI first. They mark the event target so we
+        // leave the dialog open and let them handle it.
+        if (e.target instanceof Element && e.target.closest('[data-esc-local]')) return;
         e.stopPropagation();
         close();
         return;
