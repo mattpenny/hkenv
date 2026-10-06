@@ -64,22 +64,12 @@ export default function MapView({
     };
   }, []);
 
-  // ---- Layer switcher (labels follow the active language) ----
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !stationLayerRef.current) return;
-    const control = L.control
-      .layers(
-        {
-          [t('map.layerStations')]: stationLayerRef.current,
-          [t('map.layerBeaches')]: beachLayerRef.current,
-        },
-        null,
-        { position: 'topright' }
-      )
-      .addTo(map);
-    return () => control.remove();
-  }, [lang, t]);
+  // ---- No Leaflet layers control ----
+  // The default `L.control.layers` switcher was deliberately removed: the layer
+  // toggles live in the `.layer-toggles` row directly beneath the map, and the
+  // two would always disagree the moment the user touched one. Keeping a single
+  // source of truth (App's `showStations` / `showBeaches`) avoids that class of
+  // bug entirely. Do not reinstate it without also removing those checkboxes.
 
   // ---- Collapsible legend (bottom-right) ----
   // Rebuilt whenever the language changes so the text stays current.
