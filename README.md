@@ -87,9 +87,24 @@ no 24-hour or multi-day accumulated product (`rainfall24hr.php` 404s, and the
 `r` parameter is ignored), so "did it rain heavily in the last 3 days?" is not  
 answerable from this feed. A true 3-day total would require accumulating samples  
 server-side over time. The UI therefore states the measured window explicitly  
-and never implies a multi-day total. The card shows the reading for the  
-currently selected region's district, and warns only at or above  
+and never implies a multi-day total. The card warns only at or above  
 `RAIN_WARN_MM` (5 mm/hour) so trace readings do not cause false alarms.
+
+**Which district it quotes.** The feed publishes all 18 official districts, so
+the card reports the district the visitor is **actually in**, resolved from the
+browser's GPS fix by nearest district centre (`districtForCoords`). The panel
+marks it `（你的位置）` / `(your location)` so the figure is never mistaken for a
+region-wide number. Pressing **使用我的位置** inside the card re-resolves from
+that exact fix.
+
+When geolocation is denied or unavailable, it falls back to a representative
+district for the selected region (`rainDistrictForRegion`) and drops the
+"your location" marker — a real district's figure, honestly unlabelled.
+
+> The district names in `DISTRICT_CENTRES` must be spelled **exactly** as HKO
+> publishes them (`Central & Western District` but bare `Wan Chai`). A mismatch
+> would look up `undefined` and silently render a false `0 mm`. The test suite
+> cross-checks the table against the live feed to catch this.
 
 If the rainfall feed is unavailable the card says so and the rest of the app is  
 unaffected.
@@ -178,16 +193,24 @@ makes `aqhiDevProxy()` in `vite.config.js` serve `/epd/aqhi` from XML recorded
 from the live feed (`tools/fixtures/`). Everything else — live
 AQHI values, rainfall, map tiles — is unchanged.
 
-Two Playwright suites drive this server and assert real behaviour:
+Three Playwright suites drive this server and assert real behaviour:
 
 ```bash
-BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/modal-check.mjs        # 41 assertions
-BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/chart-table-check.mjs  # 40 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/modal-check.mjs         # 41 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/chart-table-check.mjs   # 40 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/rain-district-check.mjs # 10 assertions
 ```
 
-`chart-table-check.mjs` (40 assertions) covers the axis ticks, the on-chart tooltip position
-and its edge-clamping, pointer/keyboard/touch interaction
-on the chart, the Escape precedence rule, and the table's column geometry.
+`chart-table-check.mjs` covers the axis ticks, the on-chart tooltip position
+and its edge-clamping, pointer/keyboard/touch interaction on the chart, the
+Escape precedence rule, and the table's column geometry.
+
+`rain-district-check.mjs` grants a fake GPS fix (Kwun Tong), then re-runs with
+geolocation **denied**, then presses the card's own locate button from another
+fix (Sha Tin) — asserting the district follows the fix, the denial falls back to
+the region default without claiming to be "your location", and an explicit
+locate wins.
+
 Screenshots land in `.workbuddy-ai/tools/shots/`.
 
 **What to look for**

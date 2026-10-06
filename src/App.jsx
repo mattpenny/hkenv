@@ -17,6 +17,7 @@ import {
   districtRegion,
   regionForCoords,
   rainDistrictForRegion,
+  districtForCoords,
 } from './utils/regions.js';
 
 export default function App() {
@@ -46,16 +47,27 @@ export default function App() {
   // Region tabs are shared by both data cards so they always agree.
   const [region, setRegion] = useState('hongkong');
   const [regionAuto, setRegionAuto] = useState(false);
+  // The district the visitor is actually in, from GPS. `null` until we have a
+  // fix (or if it is denied/unavailable).
+  const [gpsDistrict, setGpsDistrict] = useState(null);
 
   /**
-   * Which district the rainfall panel reports on. Derived from the shared
-   * region so the panel always agrees with the two cards above it.
+   * Which district the rainfall panel reports on.
    *
-   * NOTE: this must be a real district name from the rainfall feed — an AQHI
-   * station name like "Central/Western" is not one, and passing it would look
-   * up `undefined` and report a false 0 mm.
+   * Prefer the district the user is physically in, because "how much did it
+   * rain here in the last hour" is only meaningful for a place they are
+   * standing in — the old behaviour quoted a fixed representative district for
+   * the whole region (e.g. Central & Western for all of Hong Kong Island), which
+   * quietly reported another district's gauge to anyone not in it.
+   *
+   * Falls back to the region representative when GPS is denied or unavailable,
+   * so the panel always has something truthful to show.
+   *
+   * NOTE: either branch must yield a real district name from the rainfall feed —
+   * an AQHI station name like "Central/Western" is not one, and passing it would
+   * look up `undefined` and report a false 0 mm.
    */
-  const rainDistrict = rainDistrictForRegion(region);
+  const rainDistrict = gpsDistrict ?? rainDistrictForRegion(region);
 
   /**
    * Ask the map to focus a feature and remember it as the active selection.
@@ -85,17 +97,20 @@ export default function App() {
 
   // Default the area from the visitor's GPS once (no prompt storm: we ask a
   // single time, silently ignore denial, and never override a manual pick).
+  // The same fix also tells us which of the 18 rainfall districts they are in.
   useEffect(() => {
     if (!navigator.geolocation) return;
     let cancelled = false;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         if (cancelled) return;
-        setRegion(regionForCoords(pos.coords.latitude, pos.coords.longitude));
+        const { latitude, longitude } = pos.coords;
+        setRegion(regionForCoords(latitude, longitude));
         setRegionAuto(true);
+        setGpsDistrict(districtForCoords(latitude, longitude));
       },
       () => {
-        /* denied or unavailable — keep the default area */
+        /* denied or unavailable — keep the default area and region district */
       },
       { timeout: 8000, maximumAge: 10 * 60 * 1000 }
     );
@@ -214,6 +229,7 @@ export default function App() {
             onHighlight={focusOnMap}
             rainfall={rainfall}
             rainfallDistrict={rainDistrict}
+            rainfallDistrictFromGps={gpsDistrict != null}
           />
         </section>
 

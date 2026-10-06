@@ -213,6 +213,7 @@ export const STRINGS = {
     'rec.rainNone': 'Trace / none recorded',
     'rec.rainUnavailable': 'Rainfall data is unavailable right now.',
     'rec.rainMax': 'Wettest district: {district} — {mm} mm',
+    'rec.rainYourDistrict': '{district} (your location)',
     'rec.rainNote':
       'A rolling 1-hour reading from the Hong Kong Observatory. Heavy rain raises bacteria levels, and this feed cannot total the last few days — so use your own judgement for older rain.',
 
@@ -425,6 +426,7 @@ export const STRINGS = {
     'rec.rainNone': '微量 / 沒有記錄',
     'rec.rainUnavailable': '暫時無法取得雨量數據。',
     'rec.rainMax': '雨量最高的地區：{district} — {mm} 毫米',
+    'rec.rainYourDistrict': '{district}（你的位置）',
     'rec.rainNote':
       '此為香港天文台的滾動一小時讀數。大雨會令細菌含量上升，而本數據源無法計算過去數日的總雨量 — 較早期的降雨請自行判斷。',
 

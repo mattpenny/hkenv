@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { nearest } from '../utils/colorScale.js';
-import { districtRegion } from '../utils/regions.js';
+import { districtRegion, districtForCoords } from '../utils/regions.js';
 import { useI18n } from '../i18n/LanguageContext.jsx';
 
 /**
@@ -15,8 +15,11 @@ import { useI18n } from '../i18n/LanguageContext.jsx';
  * publishes only a rolling **1-hour** window, so the UI must label that window
  * rather than imply a multi-day total it cannot compute.
  *
- * `rainfallDistrict` is supplied by App from the shared region selection, so
- * the card follows the same area the AQHI and beach cards are showing.
+ * `rainfallDistrict` is supplied by App: the district from the visitor's GPS
+ * when available, else a representative district for the selected region. When
+ * the user presses "use my location" *here*, this card derives the district
+ * from that exact fix instead — an explicit request should win over the
+ * background one.
  */
 /**
  * Rainfall at or above this (in mm over the past hour) is worth a warning.
@@ -37,12 +40,35 @@ export default function RecommendationCard({
   onHighlight,
   rainfall = null,
   rainfallDistrict = null,
+  /** True when `rainfallDistrict` came from the visitor's GPS fix. */
+  rainfallDistrictFromGps = false,
 }) {
   const { t, tRisk, tStation, tBeach, tDistrict, formatTime } = useI18n();
   const [point, setPoint] = useState(null); // { lat, lng, label }
   const [status, setStatus] = useState('idle'); // idle | locating | denied | ready | no-data
   const [geoError, setGeoError] = useState(null); // specific reason, shown to the user
   const [result, setResult] = useState(null);
+
+  /**
+   * The district to quote rainfall for.
+   *
+   * When the user has asked for "my location" (`point.label === 'me'`) we use
+   * the district of that fix, because that is the place they actually care
+   * about. Otherwise we fall back to whatever App decided (its own GPS-derived
+   * district, or the region representative when GPS was refused).
+   *
+   * `overrideDistrict` is null for a station pick too: picking "Kwun Tong"
+   * means "recommend me something near Kwun Tong", not "I am standing in Kwun
+   * Tong", so it must not hijack the rainfall district.
+   */
+  const overrideDistrict = useMemo(
+    () => (point?.label === 'me' ? districtForCoords(point.lat, point.lng) : null),
+    [point]
+  );
+  const shownDistrict = overrideDistrict ?? rainfallDistrict;
+  // "(your location)" is shown when either the card's own fix or App's
+  // background fix supplied the district.
+  const districtIsGps = overrideDistrict != null || rainfallDistrictFromGps;
 
   function locate() {
     setGeoError(null);
@@ -148,8 +174,8 @@ export default function RecommendationCard({
     // warn on a meaningful amount — a trace of rain is not worth alarming
     // anyone over, and HKO reports sub-millimetre values freely.
     const rainMm =
-      rainfall && rainfallDistrict && rainfall.byDistrict
-        ? rainfall.byDistrict[rainfallDistrict]
+      rainfall && shownDistrict && rainfall.byDistrict
+        ? rainfall.byDistrict[shownDistrict]
         : null;
     const meaningfulRain = typeof rainMm === 'number' && rainMm >= RAIN_WARN_MM;
 
@@ -237,9 +263,9 @@ export default function RecommendationCard({
       <div className="rain-panel">
         <div className="rain-head">
           <span>{t('rec.rainHeader')}</span>
-          {rainfall?.byDistrict && rainfallDistrict && (
+          {rainfall?.byDistrict && shownDistrict && (
             <b>
-              {formatMm(rainfall.byDistrict[rainfallDistrict] ?? 0)} {rainfall.unit}
+              {formatMm(rainfall.byDistrict[shownDistrict] ?? 0)} {rainfall.unit}
             </b>
           )}
         </div>
@@ -247,7 +273,10 @@ export default function RecommendationCard({
         {rainfall?.byDistrict ? (
           <>
             <small className="muted">
-              {tDistrict(rainfallDistrict)} ·{' '}
+              {districtIsGps
+                ? t('rec.rainYourDistrict', { district: tDistrict(shownDistrict) })
+                : tDistrict(shownDistrict)}{' '}
+              ·{' '}
               {t('rec.rainWindow', {
                 start: formatTime(rainfall.startTime),
                 end: formatTime(rainfall.endTime),

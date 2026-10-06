@@ -16,6 +16,8 @@
  * filterable — better than silently hiding a station.
  */
 
+import { haversineKm } from './colorScale.js';
+
 export const REGIONS = ['hongkong', 'kowloon', 'newterritories'];
 
 export const REGION_LABELS = {
@@ -140,6 +142,10 @@ const REGION_CENTRES = {
  * These are the most central/populous districts of each region, chosen as a
  * sensible "what is the weather like where most people are" default. Any of
  * the region's districts would be valid; this is just a stable pick.
+ *
+ * These are only a FALLBACK. When the browser gives us coordinates we report the
+ * district the user is actually standing in (see `districtForCoords`) — the
+ * regional default is what we show when GPS is denied or unavailable.
  */
 const REGION_RAIN_DISTRICT = {
   hongkong: 'Central & Western District',
@@ -150,6 +156,79 @@ const REGION_RAIN_DISTRICT = {
 /** A representative rainfall-feed district name for a region. */
 export function rainDistrictForRegion(region) {
   return REGION_RAIN_DISTRICT[region] ?? null;
+}
+
+/**
+ * Approximate centre of each of the 18 official districts, as
+ * `[latitude, longitude]`.
+ *
+ * PURPOSE: turn a GPS fix into the district name the rainfall feed uses, by
+ * picking the nearest centre. Keys are spelled **exactly** as HKO publishes
+ * them in `rhrread` (note "Central & Western District" and bare "Wan Chai",
+ * which do not follow one consistent pattern) — a mismatch here would look up
+ * `undefined` and render a false 0 mm.
+ *
+ * These are habitable-area centroids, not survey points, and districts are
+ * irregular shapes; a point right on a boundary can fall to either neighbour.
+ * That is acceptable for "which district's rain gauge should I quote", and is
+ * far better than quoting a fixed district for the whole region.
+ */
+const DISTRICT_CENTRES = {
+  'Central & Western District': [22.2830, 114.1500],
+  'Wan Chai': [22.2760, 114.1770],
+  'Eastern District': [22.2840, 114.2240],
+  'Southern District': [22.2480, 114.1590],
+  'Yau Tsim Mong': [22.3120, 114.1700],
+  'Sham Shui Po': [22.3320, 114.1620],
+  'Kowloon City': [22.3280, 114.1910],
+  'Wong Tai Sin': [22.3420, 114.1960],
+  'Kwun Tong': [22.3170, 114.2260],
+  'Kwai Tsing': [22.3570, 114.1300],
+  'Tsuen Wan': [22.3700, 114.1150],
+  'Tuen Mun': [22.3910, 113.9760],
+  'Yuen Long': [22.4440, 114.0320],
+  'North District': [22.4970, 114.1430],
+  'Tai Po': [22.4500, 114.1680],
+  'Sha Tin': [22.3820, 114.1890],
+  'Sai Kung': [22.3820, 114.2710],
+  'Islands District': [22.2610, 113.9430],
+};
+
+/** The district names this app can resolve, in feed spelling. */
+export const RAIN_DISTRICTS = Object.keys(DISTRICT_CENTRES);
+
+/**
+ * Nearest official district to a lat/lng, or `null` when the coordinates are
+ * unusable.
+ *
+ * Deliberately does NOT clamp to a "reasonable" distance: a user in, say,
+ * Macao or Shenzhen will get the nearest Hong Kong district instead of nothing.
+ * That is a better failure than a blank rainfall panel, and the panel still
+ * labels which district the figure belongs to.
+ */
+export function districtForCoords(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  let best = null;
+  let bestDist = Infinity;
+  for (const [name, [dlat, dlng]] of Object.entries(DISTRICT_CENTRES)) {
+    // Squared planar distance is enough to rank candidates this close together,
+    // but use the proper great-circle metric so the choice is defensible.
+    const d = haversineKm(lat, lng, dlat, dlng);
+    if (d < bestDist) {
+      bestDist = d;
+      best = name;
+    }
+  }
+  return best;
+}
+
+/**
+ * Which broad region a district belongs to, reusing the existing district
+ * table so a GPS fix can also set the region tabs consistently.
+ */
+export function regionForDistrict(districtName) {
+  if (!districtName) return null;
+  return DISTRICT_REGION[districtName] ?? DISTRICT_REGION[`${districtName} District`] ?? null;
 }
 
 /** Nearest region to a lat/lng, by simple squared distance. */
