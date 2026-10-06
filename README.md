@@ -58,6 +58,26 @@ Neither dataset contains rainfall data and this app calls no weather API. The
 **self-reported checkbox**, not an automatic check. To automate it, call the  
 HKO Open Data API 9-day rainfall forecast in `RecommendationCard.jsx`.
 
+## Layout
+
+**Desktop** (>= 1180px)
+- Header: title on the left, language toggle and a **Data sources** popover button
+  on the right.
+- The **map spans the full page width** and is the hero element.
+- The three cards - Air Quality Now, Beach Water Quality, Should I Go Out? - sit
+  in a **single row underneath the map**.
+- The attribution is no longer a page footer; it opens from the header.
+
+**Tablet / mobile** (< 1180px)
+- The cards stack full-width under the map.
+- The header collapses to about 43-50px: the language toggle becomes **Eng /
+  中文** (short labels, full names kept as the accessible name), the
+  Data sources button becomes icon-only, and the date switches to a compact form
+  with the descriptive tagline dropped so the header never wraps to two lines.
+
+The layout was checked at 390 / 560 / 700 / 820 / 900 / 980 / 1000 / 1200 / 1600px
+with no horizontal overflow and a monotonic header height.
+
 ## Interface
 
 - **Language** - English / 繁體中文 toggle in the header. The choice is saved to
@@ -74,6 +94,8 @@ HKO Open Data API 9-day rainfall forecast in `RecommendationCard.jsx`.
   clicking a beach still pans there but does not force the layer back on.
 - **Legend** - collapsed by default and expands on tap, so it does not cover
   the map on a phone.
+- **Data sources** - the attribution/disclaimer popover in the header. Closes on
+  outside click or Escape.
 
 ### Both feeds are English-only
 

@@ -3,7 +3,7 @@ import MapView from './components/MapView.jsx';
 import AirQualityCard from './components/AirQualityCard.jsx';
 import BeachQualityCard from './components/BeachQualityCard.jsx';
 import RecommendationCard from './components/RecommendationCard.jsx';
-import DataSourceFooter from './components/DataSourceFooter.jsx';
+import DataSourcePanel from './components/DataSourcePanel.jsx';
 import LanguageSwitcher from './components/LanguageSwitcher.jsx';
 import { useAQHI } from './hooks/useAQHI.js';
 import { useBeachQuality } from './hooks/useBeachQuality.js';
@@ -15,7 +15,7 @@ import {
 } from './utils/regions.js';
 
 export default function App() {
-  const { t, formatLongDate } = useI18n();
+  const { t, formatLongDate, formatShortDate } = useI18n();
   const { stations, loading: aqhiLoading, error: aqhiError } = useAQHI();
   const { beaches, loading: beachLoading, error: beachError } = useBeachQuality();
 
@@ -85,21 +85,33 @@ export default function App() {
   }, []);
 
   const today = formatLongDate(new Date());
+  const todayShort = formatShortDate(new Date());
 
   return (
     <div className="app">
       <header className="header">
         <div className="header-text">
           <h1>{t('app.title')}</h1>
-          <p>
-            {today} · {t('app.subtitle')}
+          {/* The date and the descriptive subtitle are separate elements so the
+              long description can be dropped on a narrow phone, where it would
+              otherwise wrap and make the header two lines tall. Two date forms
+              are rendered; CSS shows whichever fits. */}
+          <p className="header-sub">
+            <span className="header-date-long">{today}</span>
+            <span className="header-date-short">{todayShort}</span>
+            <span className="header-tagline"> · {t('app.subtitle')}</span>
           </p>
         </div>
-        <LanguageSwitcher />
+        <div className="header-actions">
+          <LanguageSwitcher />
+          <DataSourcePanel />
+        </div>
       </header>
 
       <main className="main">
-        <div className="map-wrap">
+        {/* Map spans the full width of the page; the three cards sit in a
+            single row beneath it on desktop and stack on mobile. */}
+        <section className="map-panel">
           <MapView
             stations={stations}
             beaches={beaches}
@@ -125,9 +137,9 @@ export default function App() {
               {t('map.layerBeaches')}
             </label>
           </div>
-        </div>
+        </section>
 
-        <aside className="panels">
+        <section className="panels">
           <AirQualityCard
             stations={stations}
             loading={aqhiLoading}
@@ -153,10 +165,8 @@ export default function App() {
             beaches={beaches}
             onHighlight={focusOnMap}
           />
-        </aside>
+        </section>
       </main>
-
-      <DataSourceFooter />
     </div>
   );
 }

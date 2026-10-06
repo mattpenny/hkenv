@@ -13,6 +13,16 @@ export const LANGUAGES = {
   zh: '繁體中文',
 };
 
+/**
+ * Compact labels for the header toggle. The full names are used as the
+ * accessible name / tooltip; only the visible text is shortened so the
+ * control stays small on a phone.
+ */
+export const LANGUAGE_SHORT = {
+  en: 'Eng',
+  zh: '中文',
+};
+
 export const STRINGS = {
   en: {
     // Header
@@ -124,6 +134,7 @@ export const STRINGS = {
     'popup.healthRisk': 'Health risk',
 
     // Footer
+    'footer.toggle': 'Data sources',
     'footer.attribution':
       'This app uses open data from data.gov.hk, provided by the Hong Kong Special Administrative Region Government and the Environmental Protection Department.',
     'footer.disclaimer':
@@ -241,6 +252,7 @@ export const STRINGS = {
     'popup.healthRisk': '健康風險',
 
     // Footer
+    'footer.toggle': '資料來源',
     'footer.attribution':
       '本應用使用 data.gov.hk 的開放數據，由香港特別行政區政府及環境保護署提供。',
     'footer.disclaimer':

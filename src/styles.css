@@ -24,26 +24,68 @@ body {
   line-height: 1.45;
 }
 
-.app { max-width: 1400px; margin: 0 auto; padding: 0 0 24px; }
+/* The app fills the viewport width on desktop; the map is meant to be the
+   hero element, so we do not cap the page at a narrow column. */
+.app { width: 100%; max-width: 1800px; margin: 0 auto; padding: 0 0 20px; }
 
 /* Header */
 .header {
-  padding: 20px 16px 14px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* `relative` so the data-source popover can anchor to it. */
+  position: relative;
+  padding: 12px 16px;
+  text-align: left;
   background: linear-gradient(135deg, #2a86b8, #3fae8f);
   color: #fff;
   border-radius: 0 0 var(--radius) var(--radius);
-  position: relative;
 }
-.header h1 { margin: 0; font-size: 1.6rem; letter-spacing: 0.2px; }
-.header p { margin: 4px 0 0; opacity: 0.9; font-size: 0.95rem; }
+/* Keep the header to ONE line at every width.
+   The title and the date/tagline are allowed to shrink and the tagline is the
+   first thing to go, so the header never grows to two lines and steal height
+   from the map. Measured in the responsive sweep: without this the header
+   ballooned from 51px to 98px between 700px and 820px. */
+.header-text { min-width: 0; flex: 1 1 auto; overflow: hidden; }
+.header h1 {
+  margin: 0;
+  /* Scale down fluidly so the title never forces a second line. */
+  font-size: clamp(1rem, 2.1vw, 1.5rem);
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-sub {
+  margin: 3px 0 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-/* Language switcher, pinned to the header's top-right on desktop */
+/* Below ~1100px the tagline is dropped: the full title + date + two buttons
+   no longer fit on one line once the map-driven layout is this narrow. */
+@media (max-width: 1100px) {
+  .header-tagline { display: none; }
+}
+
+/* Right-hand header controls: language toggle + data-source button */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
+/* Language switcher */
 .lang-switch {
   display: inline-flex;
   gap: 2px;
   padding: 3px;
-  margin-top: 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.35);
@@ -60,34 +102,66 @@ body {
   white-space: nowrap;
 }
 .lang-btn.is-active { background: #fff; color: var(--primary-dark); font-weight: 600; }
-@media (min-width: 700px) {
-  .lang-switch { position: absolute; top: 14px; right: 16px; margin-top: 0; }
-}
 
-/* Layout: map + side panel on desktop, stacked on mobile */
+/* Data-source popover (attribution lives here instead of a page footer) */
+.data-source { position: relative; }
+.data-source-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.data-source-btn:hover { background: rgba(255, 255, 255, 0.34); }
+.data-source-btn-icon { font-size: 0.9rem; line-height: 1; }
+.data-source-chevron { font-size: 9px; opacity: 0.8; }
+
+.data-source-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 900; /* above the map panes */
+  width: min(420px, calc(100vw - 32px));
+  background: #fff;
+  color: var(--ink);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(23, 50, 63, 0.22);
+  padding: 14px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: left;
+}
+.data-source-pop p { margin: 0 0 8px; }
+.data-source-pop p:last-child { margin-bottom: 0; }
+.data-source-pop .links { color: var(--muted); }
+.data-source-pop .links a { color: var(--primary-dark); }
+
+/* Layout: map full width, then the three cards in one row beneath it */
 .main {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   padding: 16px;
 }
-@media (min-width: 1000px) {
-  .main { grid-template-columns: 2fr 1fr; align-items: start; }
-}
+.map-panel { position: relative; }
 
-.map-wrap { position: relative; }
-
-/* ~70vh on desktop, ~50vh on mobile */
+/* The map stretches to the full width of the page. */
 .map {
   width: 100%;
-  height: 50vh;
+  height: 52vh;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   background: #dbeef7;
   z-index: 0;
 }
-@media (min-width: 1000px) { .map { height: 70vh; } }
-
+@media (min-width: 1000px) { .map { height: 62vh; } }
 .layer-toggles {
   display: flex;
   gap: 16px;
@@ -101,8 +175,19 @@ body {
 }
 .layer-toggles label { cursor: pointer; }
 
-/* Cards */
-.panels { display: flex; flex-direction: column; gap: 16px; }
+/* Cards: one row of three on desktop, stacked on mobile.
+   The three-up breakpoint is set at 1180px rather than 1000px because below
+   that each column drops under ~360px, which wraps the region tabs onto two
+   lines and squeezes the beach names. */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (min-width: 1180px) {
+  .panels { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .card {
   background: var(--card);
   border-radius: var(--radius);
@@ -374,20 +459,33 @@ select {
   flex: 0 0 auto;
 }
 
-/* Footer */
-.footer {
-  margin: 8px 16px 0;
-  padding: 16px;
-  background: #fff;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-.footer p { margin: 0 0 6px; }
-.links a { color: var(--primary-dark); }
-
+/* Mobile: keep the header to a single compact row so the map gets the space.
+   The language toggle and data-source button sit beside the title instead of
+   stacking underneath it. */
 @media (max-width: 600px) {
-  .header h1 { font-size: 1.3rem; }
+  .header {
+    padding: 7px 10px;
+    gap: 8px;
+  }
+  .header h1 { font-size: 1.02rem; }
+  /* Short date only, and nothing else, so the line cannot wrap. */
+  .header-sub { font-size: 0.7rem; margin-top: 1px; }
+  .header-date-long { display: none; }
+  .header-date-short { display: inline; }
+  .header-tagline { display: none; }
+
+  .header-actions { gap: 5px; }
+  .lang-switch { padding: 2px; }
+  .lang-btn { font-size: 0.72rem; padding: 3px 8px; }
+  /* Icon-only on a phone — the full label would widen the header again. */
+  .data-source-btn { padding: 4px 7px; font-size: 0.72rem; }
+  .data-source-btn-label { display: none; }
+  .data-source-pop { right: -4px; }
+
+  .main { padding: 10px; gap: 12px; }
+  .map { height: 45vh; }
   .aqhi-number { width: 62px; height: 62px; font-size: 2rem; }
 }
+
+/* The compact date is only used on phones. */
+.header-date-short { display: none; }

@@ -117,6 +117,22 @@ export function LanguageProvider({ children }) {
     [lang]
   );
 
+  /**
+   * Compact date for narrow screens — no weekday, short month. Keeps the
+   * header to a single line on a phone where the long form wraps.
+   */
+  const formatShortDate = useCallback(
+    (date) => {
+      const d = date instanceof Date ? date : new Date(date);
+      return d.toLocaleDateString(lang === 'zh' ? 'zh-HK' : 'en-HK', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    },
+    [lang]
+  );
+
   const value = useMemo(
     () => ({
       lang,
@@ -128,8 +144,19 @@ export function LanguageProvider({ children }) {
       tBeach,
       formatDateTime,
       formatLongDate,
+      formatShortDate,
     }),
-    [lang, t, tRisk, tStation, tDistrict, tBeach, formatDateTime, formatLongDate]
+    [
+      lang,
+      t,
+      tRisk,
+      tStation,
+      tDistrict,
+      tBeach,
+      formatDateTime,
+      formatLongDate,
+      formatShortDate,
+    ]
   );
 
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
