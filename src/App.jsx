@@ -98,24 +98,45 @@ export default function App() {
   // Default the area from the visitor's GPS once (no prompt storm: we ask a
   // single time, silently ignore denial, and never override a manual pick).
   // The same fix also tells us which of the 18 rainfall districts they are in.
+  //
+  // RETRY NOTE: inside an Android WebView a geolocation call does NOT wait for
+  // the system permission dialog — it reports PERMISSION_DENIED right away,
+  // while the dialog is still open. A single attempt would therefore be lost to
+  // the very prompt it triggered, leaving the rainfall panel on the regional
+  // fallback district even after the user tapped "Allow". We retry briefly so
+  // the grant is picked up.
   useEffect(() => {
     if (!navigator.geolocation) return;
     let cancelled = false;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (cancelled) return;
-        const { latitude, longitude } = pos.coords;
-        setRegion(regionForCoords(latitude, longitude));
-        setRegionAuto(true);
-        setGpsDistrict(districtForCoords(latitude, longitude));
-      },
-      () => {
-        /* denied or unavailable — keep the default area and region district */
-      },
-      { timeout: 8000, maximumAge: 10 * 60 * 1000 }
-    );
+    const timers = [];
+    let attempt = 0;
+    const MAX_ATTEMPTS = 4;
+
+    const ask = () => {
+      if (cancelled) return;
+      attempt += 1;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (cancelled) return;
+          const { latitude, longitude } = pos.coords;
+          setRegion(regionForCoords(latitude, longitude));
+          setRegionAuto(true);
+          setGpsDistrict(districtForCoords(latitude, longitude));
+        },
+        () => {
+          // Keep the default area and region district. Retry only while it is
+          // plausible the permission dialog has not been answered yet.
+          if (cancelled || attempt >= MAX_ATTEMPTS) return;
+          timers.push(setTimeout(ask, 700));
+        },
+        { timeout: 8000, maximumAge: 10 * 60 * 1000 }
+      );
+    };
+
+    ask();
     return () => {
       cancelled = true;
+      timers.forEach(clearTimeout);
     };
   }, []);
 

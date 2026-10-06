@@ -99,42 +99,71 @@ export default function RecommendationCard({
       setGeoError(t('rec.err.timeout'));
     }, 12000);
 
-    try {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(watchdog);
-          setPoint({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            label: 'me',
-            accuracy: pos.coords.accuracy,
-          });
-          setStatus('ready');
-        },
-        (err) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(watchdog);
-          setStatus('denied');
-          // err.code: 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
-          if (err && err.code === 1) setGeoError(t('rec.err.permission'));
-          else if (err && err.code === 2) setGeoError(t('rec.err.unavailable'));
-          else if (err && err.code === 3) setGeoError(t('rec.err.timeout'));
-          else setGeoError(t('rec.err.unknown'));
-        },
-        // Do not cache a stale fix; give the browser a real chance to answer.
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
-      );
-    } catch (err) {
-      // Some browsers throw synchronously (rare, but it looks like a dead button).
-      if (settled) return;
-      settled = true;
-      clearTimeout(watchdog);
-      setStatus('denied');
-      setGeoError(t('rec.err.unknown'));
-    }
+    /**
+     * Attempt the fix, retrying briefly on PERMISSION_DENIED.
+     *
+     * WHY: inside an Android WebView, geolocation does NOT wait for the user to
+     * answer the system permission dialog. The WebView reports PERMISSION_DENIED
+     * to the page *immediately*, while the dialog is still on screen. If we gave
+     * up on that first error the button would look broken even after the user
+     * tapped "Allow" — their tap would land on a call that had already failed.
+     *
+     * So a denial is retried a few times over ~3s. If the user allows, the next
+     * attempt succeeds and the UI never shows an error. A genuine refusal simply
+     * exhausts the retries and reports the permission message, which is the same
+     * outcome as before for a real denial.
+     */
+    const MAX_ATTEMPTS = 4;
+    let attempt = 0;
+
+    const requestFix = () => {
+      attempt += 1;
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(watchdog);
+            setPoint({
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+              label: 'me',
+              accuracy: pos.coords.accuracy,
+            });
+            setStatus('ready');
+          },
+          (err) => {
+            if (settled) return;
+            // err.code: 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT
+            if (err && err.code === 1 && attempt < MAX_ATTEMPTS) {
+              // Likely the system dialog is still open — give the grant time.
+              setTimeout(() => {
+                if (!settled) requestFix();
+              }, 700);
+              return;
+            }
+            settled = true;
+            clearTimeout(watchdog);
+            setStatus('denied');
+            if (err && err.code === 1) setGeoError(t('rec.err.permission'));
+            else if (err && err.code === 2) setGeoError(t('rec.err.unavailable'));
+            else if (err && err.code === 3) setGeoError(t('rec.err.timeout'));
+            else setGeoError(t('rec.err.unknown'));
+          },
+          // Do not cache a stale fix; give the browser a real chance to answer.
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 }
+        );
+      } catch (err) {
+        // Some browsers throw synchronously (rare, but it looks like a dead button).
+        if (settled) return;
+        settled = true;
+        clearTimeout(watchdog);
+        setStatus('denied');
+        setGeoError(t('rec.err.unknown'));
+      }
+    };
+
+    requestFix();
   }
 
   function useStation(s) {
