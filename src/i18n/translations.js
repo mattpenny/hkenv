@@ -271,7 +271,7 @@ export const STRINGS = {
     'legend.fairDetail': '空氣質素健康指數 4-6，二級',
     'legend.poor': '欠佳 / 高',
     'legend.poorDetail': '空氣質素健康指數 7，三級',
-    'legend.veryPoor': '甚差 / 甚高',
+    'legend.veryPoor': '極差 / 甚高',
     'legend.veryPoorDetail': '空氣質素健康指數 8-10，四級',
     'legend.serious': '嚴重',
     'legend.seriousDetail': '空氣質素健康指數 10+',
@@ -401,7 +401,7 @@ export const STRINGS = {
     'beach.grade1': '良好',
     'beach.grade2': '一般',
     'beach.grade3': '欠佳',
-    'beach.grade4': '甚差',
+    'beach.grade4': '極差',
 
     // Beach map popup
     'popup.beachRetrieved': '數據擷取時間：{time}',
