@@ -603,7 +603,7 @@ export const BEACH_NAMES_ZH = {
   'Hoi Mei Wan Beach': '海美灣泳灘',
   'Lido Beach': '麗都灣泳灘',
   'Ma Wan Tung Wan Beach': '馬灣東灣泳灘',
-  'Ting Kau Beach': '汀九泳灘',
+  'Ting Kau Beach': '汀九灣泳灘',
 
   // Tuen Mun District
   'Butterfly Beach': '蝴蝶灣泳灘',
