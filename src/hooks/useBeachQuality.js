@@ -60,6 +60,13 @@ async function fetchJson(url) {
  * beachCode). The dataset page states data is generally posted within 48
  * hours of sampling. We therefore report the time this app fetched the feed
  * and say so plainly in the UI rather than inventing a sampling date.
+ *
+ * NOTE ON CLOSED BEACHES: the feed lists all 43 gazetted beaches, of which a
+ * few are `status: "notopen"` (out of season) and carry an empty grade. These
+ * are KEPT rather than dropped: the district roster in the UI should match the
+ * official beach list, and "this beach is closed for the season" is useful
+ * information — silently omitting it just looks like a missing beach. They are
+ * tagged `open:false` so the card can render them without a grade badge.
  */
 function parseGeoJSON(geojson, fetchedAt = new Date()) {
   const features = geojson?.features ?? [];
@@ -68,21 +75,27 @@ function parseGeoJSON(geojson, fetchedAt = new Date()) {
       const p = f.properties ?? {};
       const [lng, lat] = f.geometry?.coordinates ?? [null, null];
 
-      // Filter out beaches closed for the season / not in service.
+      // `status` is "open" for in-service beaches, anything else (e.g.
+      // "notopen") means out of season for swimming.
       const status = (p.status || '').toLowerCase();
-      if (status && status !== 'open') return null;
+      const open = status === '' || status === 'open';
 
-      // Closed beaches carry grade: "" — drop them too.
-      const grade = parseInt(p.grade, 10);
-      if (isNaN(grade) || grade < 1 || grade > 4) return null;
-      if (gradeFromDesc(p.desc) !== null && gradeFromDesc(p.desc) !== grade) return null;
+      // A closed beach carries grade "" — keep it, but with no grade.
+      const gradeNum = parseInt(p.grade, 10);
+      const grade = Number.isNaN(gradeNum) || gradeNum < 1 || gradeNum > 4 ? null : gradeNum;
+
+      // Guard against a grade/desc mismatch (a data glitch we saw once). Only
+      // meaningful when both are present; a closed beach has neither.
+      if (open && grade == null) return null;
+      if (open && gradeFromDesc(p.desc) !== null && gradeFromDesc(p.desc) !== grade) return null;
 
       return {
         name: (p.name || 'Unknown beach').trim(),
         district: p.district || '',
+        open,
         grade,
-        gradeLabel: BEACH_GRADE_LABELS[grade] ?? 'Unknown',
-        desc: p.desc || `Grade ${grade}`,
+        gradeLabel: grade != null ? BEACH_GRADE_LABELS[grade] ?? 'Unknown' : null,
+        desc: p.desc || (grade != null ? `Grade ${grade}` : ''),
         beachCode: p.beachCode || '',
         updateDate: null, // not provided by the feed — see note above
         fetchedAt,

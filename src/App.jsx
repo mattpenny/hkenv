@@ -18,6 +18,7 @@ import {
   regionForCoords,
   rainDistrictForRegion,
   districtForCoords,
+  BEACH_DISTRICTS,
 } from './utils/regions.js';
 
 export default function App() {
@@ -44,9 +45,16 @@ export default function App() {
   // header icon, rather than occupying a full-width row of its own.
   const [pollOpen, setPollOpen] = useState(false);
 
-  // Region tabs are shared by both data cards so they always agree.
+  // Region tabs are shared by the Air Quality card (and the map's station
+  // layer). The BEACH card filters by district instead, because only six of
+  // the 18 districts have beaches and they do not line up with the three broad
+  // regions — a "Kowloon" tab could never contain anything.
   const [region, setRegion] = useState('hongkong');
   const [regionAuto, setRegionAuto] = useState(false);
+  // Which beach district the Beach card is showing. Defaults to the first in
+  // BEACH_DISTRICTS (Tuen Mun) and is corrected to the visitor's own district
+  // once a GPS fix arrives.
+  const [beachDistrict, setBeachDistrict] = useState(BEACH_DISTRICTS[0]);
   // The district the visitor is actually in, from GPS. `null` until we have a
   // fix (or if it is denied/unavailable).
   const [gpsDistrict, setGpsDistrict] = useState(null);
@@ -121,7 +129,12 @@ export default function App() {
           const { latitude, longitude } = pos.coords;
           setRegion(regionForCoords(latitude, longitude));
           setRegionAuto(true);
-          setGpsDistrict(districtForCoords(latitude, longitude));
+          // The nearest official district — used both for the rainfall panel
+          // and, when it is one of the beach districts, to open the Beach card
+          // on the visitor's own district.
+          const d = districtForCoords(latitude, longitude);
+          setGpsDistrict(d);
+          if (d && BEACH_DISTRICTS.includes(d)) setBeachDistrict(d);
         },
         () => {
           // Keep the default area and region district. Retry only while it is
@@ -238,9 +251,8 @@ export default function App() {
             beaches={beaches}
             loading={beachLoading}
             error={beachError}
-            region={region}
-            onRegionChange={handleRegionChange}
-            regionAuto={regionAuto}
+            district={beachDistrict}
+            onDistrictChange={setBeachDistrict}
             onSelect={focusOnMap}
             activeId={activeId}
           />

@@ -39,14 +39,27 @@ export const BEACH_GRADE_LABELS = {
   4: 'Very Poor',
 };
 
+/**
+ * Official EPD beach grading colours, taken from the "Latest Beach Water
+ * Quality Grading" legend. Grade 1 is a light cyan (NOT green) and grade 2 is
+ * a bright green — this is the EPD convention and differs from a naive
+ * good=green/bad=red scale, so the values are pinned here rather than derived.
+ *
+ * Kept as an explicit table so the swatch, the chip badge and the map marker
+ * cannot drift apart.
+ */
+export const BEACH_GRADE_COLORS = {
+  1: '#7CE7F0', // Good      — light cyan
+  2: '#4CE84C', // Fair      — bright green
+  3: '#F5C33B', // Poor      — amber
+  4: '#F0433D', // Very Poor — red
+};
+
+/** Neutral grey for a beach that is not open for swimming this season. */
+export const BEACH_CLOSED_COLOR = '#9AA7B0';
+
 export function beachGradeColor(grade) {
-  switch (Number(grade)) {
-    case 1: return '#2ecc71'; // green
-    case 2: return '#f1c40f'; // yellow
-    case 3: return '#e67e22'; // orange
-    case 4: return '#e74c3c'; // red
-    default: return '#95a5a6';
-  }
+  return BEACH_GRADE_COLORS[Number(grade)] ?? BEACH_CLOSED_COLOR;
 }
 
 // ---- Geo helpers ----

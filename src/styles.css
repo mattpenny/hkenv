@@ -245,6 +245,52 @@ body {
 }
 .region-hint { font-size: 0.72rem; margin-left: auto; }
 
+/* District tabs — the six districts that contain beaches. A row that wraps
+   rather than scrolls, so every district stays reachable on a phone. */
+.district-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.card-head .district-tabs { margin: 0; }
+.district-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #cfe4ee;
+  background: #fff;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 5px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.district-tab:hover { background: #eaf6fb; }
+.district-tab.is-active {
+  background: var(--primary);
+  border-color: var(--primary-dark);
+  color: #fff;
+  font-weight: 600;
+}
+/* Count pill — muted on an idle tab, translucent on the active one so it stays
+   legible against the teal fill. */
+.district-tab-count {
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: #eaf6fb;
+  color: var(--primary-dark);
+}
+.district-tab.is-active .district-tab-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
 .muted { color: var(--muted); }
 .footnote { font-size: 0.8rem; margin-bottom: 0; }
 .error { color: var(--bad); font-size: 0.9rem; }
@@ -361,6 +407,26 @@ body {
 }
 .banner-warn { background: #fdf0e3; color: #a85a10; border: 1px solid #f3d3ab; }
 
+/* Grading legend — mirrors the official EPD chart so the badge colours below
+   need no external reference. Colours come from BEACH_GRADE_COLORS. */
+.grade-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-bottom: 10px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+.grade-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.grade-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  /* A hairline so the pale cyan swatch is visible on a white card. */
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
 .beach-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -404,6 +470,12 @@ body {
 .beach-meta { display: flex; flex-direction: column; min-width: 0; }
 .beach-meta strong { font-size: 0.88rem; }
 .beach-meta small { font-size: 0.75rem; }
+
+/* A beach that is out of season. Kept in the roster (so the list matches the
+   official one) but visually recessed so it never reads as "swimmable". */
+.beach-chip.is-closed { background: #f4f6f7; border-color: #e6eaec; }
+.beach-chip.is-closed .beach-meta strong { color: var(--muted); font-weight: 500; }
+.badge-closed { font-size: 0.9rem; }
 
 /* Recommendation */
 .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }

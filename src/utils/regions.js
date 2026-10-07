@@ -120,6 +120,33 @@ export function districtRegion(districtName) {
 }
 
 /**
+ * Districts that actually contain gazetted beaches, in the order the EPD
+ * publishes them and the order we want in the UI.
+ *
+ * Only SIX of the 18 districts have beaches, so the beach card filters by
+ * district directly instead of by the three broad regions — a "Kowloon" tab
+ * would always be empty, which is a worse experience than six tabs that each
+ * have content.
+ *
+ * Keys are spelled EXACTLY as the beach GeoJSON feed's `district` property
+ * (verified: all 43 features match, zero unmatched), so grouping is a plain
+ * equality check and needs no normalisation table.
+ */
+export const BEACH_DISTRICTS = [
+  'Tuen Mun District',
+  'Tsuen Wan District',
+  'Islands District',
+  'Tai Po District',
+  'Sai Kung District',
+  'Southern District',
+];
+
+/** Broad region a beach district belongs to (for the map / shared region UI). */
+export function beachDistrictRegion(districtName) {
+  return districtRegion(districtName);
+}
+
+/**
  * Rough centre points used to pick a default region when the browser gives us
  * coordinates but we cannot match a station/district. Approximate and only
  * used for a sensible initial tab.
