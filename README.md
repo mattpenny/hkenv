@@ -143,8 +143,12 @@ with no horizontal overflow and a monotonic header height.
   (Grade 1 to 4), with the beach code as a stable tie-break.
 - **Click to focus** - clicking a station row, the AQHI headline, or a beach  
   chip pans the map to that point and opens its popup, outlining the active  
-  item. This respects the layer checkboxes: with the beach layer hidden,  
-  clicking a beach still pans there but does not force the layer back on.  
+  item. Clicking also **re-ticks the matching layer checkbox**, because a tap on
+  a card item is a request to *see* that spot and the checkbox must not act as a
+  silent veto. (It used to: with "Air Quality Stations" or "Beaches" unticked,
+  tapping an item panned the map and drew nothing at all - no marker, no popup -
+  which reads as a broken tap. Only the layer being asked for is switched on;
+  the other one is left exactly as the user set it.)  
   The page also **scrolls the map to the top of the viewport** unless the whole  
   map is already visible, so focus follows the map rather than the card the user  
   tapped. On a phone the cards sit below the map, so this is what lets the zoom  
@@ -193,13 +197,29 @@ makes `aqhiDevProxy()` in `vite.config.js` serve `/epd/aqhi` from XML recorded
 from the live feed (`tools/fixtures/`). Everything else — live
 AQHI values, rainfall, map tiles — is unchanged.
 
-Three Playwright suites drive this server and assert real behaviour:
+Five Playwright suites drive this server and assert real behaviour:
 
 ```bash
-BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/modal-check.mjs         # 41 assertions
-BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/chart-table-check.mjs   # 40 assertions
-BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/rain-district-check.mjs # 10 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/modal-check.mjs          # 41 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/chart-table-check.mjs    # 40 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/rain-district-check.mjs  # 14 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/beach-district-check.mjs # 19 assertions
+BASE_URL="http://[::1]:5173/hkenv/" node .workbuddy-ai/tools/mobile-check.mjs         # 19 assertions
 ```
+
+`mobile-check.mjs` is the mobile regression suite. It drives a 390×844 touch
+context and synthesises **real multi-touch** through CDP
+(`Input.dispatchTouchEvent`), so the page receives genuine two-finger gestures
+rather than a mouse drag. It covers:
+
+- unticking **both** layer checkboxes, then tapping a station row or a beach
+  chip — the spot must appear on the map, and only that one layer may be
+  switched back on (the other must stay exactly as the user left it);
+- three pinch variants on the map that must **not** scroll the page: a normal
+  spread, one starting with the fingers under 40px apart whose centroid drifts
+  vertically, and one that ends with a finger lifting while the other drags;
+- that the pinch really *did* zoom (read off the tile URL), so the no-scroll
+  assertions cannot pass just because zooming broke.
 
 `chart-table-check.mjs` covers the axis ticks, the on-chart tooltip position
 and its edge-clamping, pointer/keyboard/touch interaction on the chart, the

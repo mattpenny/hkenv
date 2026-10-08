@@ -84,6 +84,16 @@ export default function App() {
    */
   const focusOnMap = useCallback((target) => {
     if (!target || target.lat == null || target.lng == null) return;
+
+    // Tapping a row/chip in a card is an explicit request to SEE that spot, so
+    // the layer it lives on has to be visible. Previously the layer checkbox
+    // acted as a silent veto: with "Air Quality Stations" (or "Beaches")
+    // unticked, tapping an item panned the map but drew nothing at all — no
+    // marker, no popup — which reads as a broken tap. Re-tick the box instead,
+    // so the checkbox and the map always agree about what is on screen.
+    if (target.type === 'station') setShowStations(true);
+    else if (target.type === 'beach') setShowBeaches(true);
+
     setActiveId(target.id ?? null);
     setHighlight({ ...target, nonce: Date.now() });
     // Clicking a station also drives the pollutant detail, so the two panels

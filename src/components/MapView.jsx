@@ -214,9 +214,12 @@ export default function MapView({
     const wantedLayer = isStation ? stationLayerRef.current : beachLayerRef.current;
     const wantedShown = isStation ? showStations : showBeaches;
 
-    // Respect the layer checkboxes: make sure the layer holding the target is
-    // actually on, but never force-hide the other one — the user's own toggles
-    // must survive (previously the *other* layer was removed and stayed gone).
+    // The layer holding the target is always on by the time we get here: App
+    // re-ticks the matching checkbox inside focusOnMap(), because tapping an
+    // item in a card is a request to see that spot and a checkbox must never
+    // silently veto it. We still re-add the layer defensively, and we never
+    // touch the *other* layer — the user's own toggles must survive (previously
+    // the other layer was removed and stayed gone).
     if (wantedLayer && wantedShown && !map.hasLayer(wantedLayer)) {
       wantedLayer.addTo(map);
     }
